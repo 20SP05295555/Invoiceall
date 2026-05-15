@@ -224,7 +224,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-indigo-500" /> Bank Details (for Invoices)
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-full">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Bank Name</label>
                 <input 
@@ -232,6 +232,16 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                   value={info.bankName} 
                   onChange={(e) => updateField('bankName', e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="col-span-full">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Account Holder Name</label>
+                <input 
+                  type="text" 
+                  value={info.accountHolder} 
+                  onChange={(e) => updateField('accountHolder', e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="e.g. HOB FURNITURE LTD"
                 />
               </div>
               <div>
@@ -250,6 +260,16 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                   value={info.sortCode} 
                   onChange={(e) => updateField('sortCode', e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">SWIFT / BIC</label>
+                <input 
+                  type="text" 
+                  value={info.swift} 
+                  onChange={(e) => updateField('swift', e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="e.g. SUPAGB21XXX"
                 />
               </div>
               <div>

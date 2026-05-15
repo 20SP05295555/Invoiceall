@@ -384,7 +384,21 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
                 </div>
             </div>
           ) : (
-            <div className="text-sm text-gray-600"><p className="mb-4">{companyInfo.paymentInstructions}</p><div className="space-y-1"><div className="flex flex-wrap gap-x-4"><span><span className="font-bold text-gray-900">Bank:</span> {companyInfo.bankName}</span><span><span className="font-bold text-gray-900">Sort Code:</span> {companyInfo.sortCode}</span><span><span className="font-bold text-gray-900">Account No.:</span> {companyInfo.accountNo}</span></div><div className="flex flex-wrap gap-x-4"><span><span className="font-bold text-gray-900">Account Holder:</span> {companyInfo.accountHolder}</span><span><span className="font-bold text-gray-900">SWIFT:</span> {companyInfo.swift}</span></div><div><span className="font-bold text-gray-900">IBAN:</span> {companyInfo.iban}</div></div></div>
+            <div className="text-sm text-gray-600">
+              {companyInfo.paymentInstructions && <p className="mb-4">{companyInfo.paymentInstructions}</p>}
+              <div className="space-y-1">
+                <div className="flex flex-wrap gap-x-4">
+                  {companyInfo.bankName && <span><span className="font-bold text-gray-900">Bank:</span> {companyInfo.bankName}</span>}
+                  {companyInfo.sortCode && <span><span className="font-bold text-gray-900">Sort Code:</span> {companyInfo.sortCode}</span>}
+                  {companyInfo.accountNo && <span><span className="font-bold text-gray-900">Account No.:</span> {companyInfo.accountNo}</span>}
+                </div>
+                <div className="flex flex-wrap gap-x-4">
+                  {companyInfo.accountHolder && <span><span className="font-bold text-gray-900">Account Holder:</span> {companyInfo.accountHolder}</span>}
+                  {companyInfo.swift && <span><span className="font-bold text-gray-900">SWIFT:</span> {companyInfo.swift}</span>}
+                </div>
+                {companyInfo.iban && <div><span className="font-bold text-gray-900">IBAN:</span> {companyInfo.iban}</div>}
+              </div>
+            </div>
           )}
         </div>
 
