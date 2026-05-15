@@ -8,15 +8,23 @@ type DocumentMode = 'order' | 'invoice' | 'receipt';
 
 interface DocumentLayoutProps {
   title: string;
+  onTitleChange?: (val: string) => void;
   documentNumber: string;
   onDocumentNumberChange?: (val: string) => void;
   dateLabel: string;
+  onDateLabelChange?: (val: string) => void;
   dateValue: string;
   onDateChange?: (val: string) => void;
+  dueDateLabel?: string;
+  onDueDateLabelChange?: (val: string) => void;
   dueDateValue: string;
   onDueDateChange?: (val: string) => void;
+  customerNoLabel?: string;
+  onCustomerNoLabelChange?: (val: string) => void;
   customerNoValue: string;
   onCustomerNoChange?: (val: string) => void;
+  billToLabel?: string;
+  onBillToLabelChange?: (val: string) => void;
   children?: React.ReactNode;
   mode: DocumentMode;
   isEditing?: boolean;
@@ -56,15 +64,23 @@ export const EditableTextArea = ({ value, onChange, className = "" }: any) => (
 
 const DocumentLayout: React.FC<DocumentLayoutProps> = ({ 
   title, 
+  onTitleChange,
   documentNumber, 
   onDocumentNumberChange,
   dateLabel, 
+  onDateLabelChange,
   dateValue,
   onDateChange,
+  dueDateLabel = "Due Date",
+  onDueDateLabelChange,
   dueDateValue,
   onDueDateChange,
+  customerNoLabel = "Customer No.",
+  onCustomerNoLabelChange,
   customerNoValue,
   onCustomerNoChange,
+  billToLabel = "Bill to",
+  onBillToLabelChange,
   children,
   mode,
   isEditing = false
@@ -223,17 +239,38 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             {isEditing ? (
               <div className="space-y-2 mb-6 p-2 -ml-2 rounded hover:bg-gray-50 transition-colors">
                 <EditableInput value={companyInfo.contact} onChange={(v: string) => updateCompanyInfo({...companyInfo, contact: v})} className="font-medium text-sm text-gray-500" placeholder="Contact Person" />
-                {companyInfo.address.map((line, i) => (
-                  <div key={`company-addr-edit-${i}`}>
-                    <EditableInput value={line} onChange={(v: string) => handleAddressChange(i, v, true)} className="text-sm text-gray-500" placeholder="Address Line" />
-                  </div>
-                ))}
+                <div className="space-y-1">
+                  {companyInfo.address.map((line, i) => (
+                    <div key={`company-addr-edit-${i}`} className="flex gap-2 items-center group/addr">
+                      <EditableInput value={line} onChange={(v: string) => handleAddressChange(i, v, true)} className="text-sm text-gray-500" placeholder="Address Line" />
+                      <button onClick={() => {
+                        const newAddr = companyInfo.address.filter((_, idx) => idx !== i);
+                        updateCompanyInfo({ ...companyInfo, address: newAddr });
+                      }} className="text-red-200 hover:text-red-500 opacity-0 group-hover/addr:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                  <button onClick={() => updateCompanyInfo({ ...companyInfo, address: [...companyInfo.address, ""] })} className="text-[10px] text-blue-500 hover:text-blue-700 flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity"><Plus className="w-3 h-3" /> Add Address Line</button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <EditableInput value={companyInfo.regNo} onChange={(v: string) => updateCompanyInfo({...companyInfo, regNo: v})} className="text-xs text-gray-400" placeholder="Co. Reg. No." />
+                  <EditableInput value={companyInfo.vatNo || ''} onChange={(v: string) => updateCompanyInfo({...companyInfo, vatNo: v})} className="text-xs text-gray-400" placeholder="VAT Number" />
+                </div>
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-2">
+                  <EditableInput value={companyInfo.email} onChange={(v: string) => updateCompanyInfo({...companyInfo, email: v})} className="text-xs text-gray-400" placeholder="Email" />
+                  <EditableInput value={companyInfo.website} onChange={(v: string) => updateCompanyInfo({...companyInfo, website: v})} className="text-xs text-gray-400" placeholder="Website" />
+                </div>
                 <EditableInput value={companyInfo.name} onChange={(v: string) => updateCompanyInfo({...companyInfo, name: v})} className="text-2xl font-bold uppercase text-black mt-2" placeholder="Company Name" />
               </div>
             ) : (
               <>
                 <h2 className="text-sm font-medium text-gray-500 mb-1">{companyInfo.contact}</h2>
-                <p className="text-sm text-gray-500 mb-6">{companyInfo.address.join(' - ')}</p>
+                <p className="text-sm text-gray-500 mb-2">{companyInfo.address.join(' - ')}</p>
+                <div className="flex flex-wrap gap-4 text-[10px] text-gray-400 font-mono mb-4">
+                  <span>REG: {companyInfo.regNo}</span>
+                  {companyInfo.vatNo && <span>VAT: {companyInfo.vatNo}</span>}
+                  <span>{companyInfo.email}</span>
+                  <span>{companyInfo.website}</span>
+                </div>
                 <h1 className="text-2xl font-bold tracking-wide uppercase text-black">{companyInfo.name}</h1>
               </>
             )}
@@ -268,7 +305,12 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
           <div className="w-full sm:w-1/2 pr-0 sm:pr-4">
               {isEditing ? (
                   <div className="space-y-1 p-2 -ml-2 rounded hover:bg-gray-50 transition-colors">
-                      <span className="font-bold text-gray-900 block mb-1">Bill to:</span>
+                      <EditableInput 
+                        value={billToLabel} 
+                        onChange={onBillToLabelChange} 
+                        className="font-bold text-gray-900 block mb-1" 
+                        placeholder="Label (e.g. Bill to)" 
+                      />
                       <EditableInput value={customer.name} onChange={(v: string) => updateCustomer({...customer, name: v})} className="font-bold mb-2" placeholder="Customer Name" />
                       {customer.address.map((line, i) => (
                           <div key={`customer-addr-edit-${i}`}>
@@ -291,19 +333,27 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
           </div>
           <div className="text-left sm:text-right w-full sm:w-1/2 pl-0 sm:pl-4">
             <div className="mb-2 flex justify-start sm:justify-end items-center gap-2">
-              <span className="font-bold text-gray-900 shrink-0">{title}:</span>
+              <span className="font-bold text-gray-900 shrink-0">
+                {isEditing && onTitleChange ? <EditableInput value={title} onChange={onTitleChange} className="w-24" /> : <>{title}:</>}
+              </span>
               {isEditing && onDocumentNumberChange ? <EditableInput value={documentNumber} onChange={onDocumentNumberChange} className="w-full sm:w-32" align="right" /> : <span className="text-gray-700">{documentNumber}</span>}
             </div>
             <div className="mb-2 flex justify-start sm:justify-end items-center gap-2">
-              <span className="font-bold text-gray-900 shrink-0">{dateLabel}:</span>
+              <span className="font-bold text-gray-900 shrink-0">
+                {isEditing && onDateLabelChange ? <EditableInput value={dateLabel} onChange={onDateLabelChange} className="w-32 text-right" /> : <>{dateLabel}:</>}
+              </span>
               {isEditing && onDateChange ? <EditableInput value={dateValue} onChange={onDateChange} className="w-full sm:w-32" align="right" /> : <span className="text-gray-700">{dateValue}</span>}
             </div>
             <div className="mb-2 flex justify-start sm:justify-end items-center gap-2">
-              <span className="font-bold text-gray-900 shrink-0">Due Date:</span>
+              <span className="font-bold text-gray-900 shrink-0">
+                {isEditing && onDueDateLabelChange ? <EditableInput value={dueDateLabel} onChange={onDueDateLabelChange} className="w-32 text-right" /> : <>{dueDateLabel}:</>}
+              </span>
               {isEditing && onDueDateChange ? <EditableInput value={dueDateValue} onChange={onDueDateChange} className="w-full sm:w-32" align="right" /> : <span className="text-gray-700">{dueDateValue}</span>}
             </div>
             <div className="flex justify-start sm:justify-end items-center gap-2">
-              <span className="font-bold text-gray-900 shrink-0">Customer No.:</span>
+              <span className="font-bold text-gray-900 shrink-0">
+                {isEditing && onCustomerNoLabelChange ? <EditableInput value={customerNoLabel} onChange={onCustomerNoLabelChange} className="w-32 text-right" /> : <>{customerNoLabel}:</>}
+              </span>
               {isEditing && onCustomerNoChange ? <EditableInput value={customerNoValue} onChange={onCustomerNoChange} className="w-full sm:w-32" align="right" /> : <span className="text-gray-700">{customerNoValue}</span>}
             </div>
           </div>
@@ -374,7 +424,7 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
         
         <div className="mt-auto pt-8 border-t border-gray-100">
           <h4 className="font-bold text-sm text-gray-900 mb-2">Terms & Conditions</h4>
-          {isEditing ? <EditableInput value={companyInfo.terms} onChange={(v: string) => updateCompanyInfo({...companyInfo, terms: v})} className="text-sm text-gray-600 mb-4" /> : <p className="text-sm text-gray-600 mb-4">{companyInfo.terms}</p>}
+          {isEditing ? <EditableTextArea value={companyInfo.terms} onChange={(v: string) => updateCompanyInfo({...companyInfo, terms: v})} className="text-sm text-gray-600 mb-4" /> : <p className="text-sm text-gray-600 mb-4">{companyInfo.terms}</p>}
           <h4 className="font-bold text-sm text-gray-900 mb-2">Payment Instructions</h4>
           {isEditing ? (
             <div className="space-y-4">

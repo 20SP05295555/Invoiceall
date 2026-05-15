@@ -55,12 +55,25 @@ const Invoice: React.FC = () => {
 
   const isPaid = order.amountDue <= 0 && order.total > 0;
 
+  const [pageTitle, setPageTitle] = useState('Tax Invoice');
+  const [docTitle, setDocTitle] = useState('Invoice');
+  const [dateLabel, setDateLabel] = useState('Invoice Date');
+  const [dueDateLabel, setDueDateLabel] = useState('Due Date');
+  const [customerNoLabel, setCustomerNoLabel] = useState('Customer No.');
+  const [billToLabel, setBillToLabel] = useState('Bill to');
+
   return (
     <div className="space-y-6 relative">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center max-w-4xl mx-auto gap-4 print:hidden">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileText className="w-6 h-6 text-gray-900" />
-          Tax Invoice
+          {isEditing ? (
+            <input 
+              value={pageTitle} 
+              onChange={(e) => setPageTitle(e.target.value)}
+              className="bg-transparent border-b border-dashed border-gray-300 focus:outline-none focus:border-blue-500"
+            />
+          ) : pageTitle}
         </h2>
         <div className="flex flex-wrap gap-2 sm:gap-3">
              {isEditing ? (
@@ -112,16 +125,24 @@ const Invoice: React.FC = () => {
 
       <div id="printable-invoice" ref={contentRef}>
         <DocumentLayout 
-            title="Invoice" 
+            title={docTitle}
+            onTitleChange={setDocTitle}
             documentNumber={`${order.orderNumber}`}
             onDocumentNumberChange={(v) => updateOrder({...order, orderNumber: v})}
-            dateLabel="Invoice Date"
+            dateLabel={dateLabel}
+            onDateLabelChange={setDateLabel}
             dateValue={order.date}
             onDateChange={(v) => updateOrder({...order, date: v})}
+            dueDateLabel={dueDateLabel}
+            onDueDateLabelChange={setDueDateLabel}
             dueDateValue={order.dueDate}
             onDueDateChange={(v) => updateOrder({...order, dueDate: v})}
+            customerNoLabel={customerNoLabel}
+            onCustomerNoLabelChange={setCustomerNoLabel}
             customerNoValue={customer.id}
             onCustomerNoChange={(v) => updateCustomer({...customer, id: v})}
+            billToLabel={billToLabel}
+            onBillToLabelChange={setBillToLabel}
             mode="invoice"
             isEditing={isEditing}
         />

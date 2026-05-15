@@ -37,12 +37,36 @@ const ProductionGallery: React.FC = () => {
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-24 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
-                <ImageIcon className="w-8 h-8" />
+        <div className="bg-white rounded-3xl border-2 border-dashed border-gray-100 py-20 px-6 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-50 text-indigo-400 mb-6">
+                <ImageIcon className="w-10 h-10" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">No photos yet</h3>
-            <p className="text-gray-500 max-w-xs mx-auto mt-1">We'll upload production photos as your furniture is built. You can also take snapshots of your documents to save them here.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Your Visual Gallery is Empty</h3>
+            <p className="text-gray-500 max-w-md mx-auto text-sm leading-relaxed mb-8">
+                This space will showcase the journey of your bespoke piece. We track every stage of production from our London workshop.
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto text-left">
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-indigo-500 shadow-sm">
+                            <Clock className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-900">Automatic Logs</h4>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed">Our master craftsmen will upload live progress photos as they assemble, foam, and upholster your furniture.</p>
+                </div>
+                
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-indigo-500 shadow-sm">
+                            <Camera className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-900">Personal Captures</h4>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed">Navigate to your <strong>Profile</strong> tab to use the document capture tool. Saved snapshots will appear here instantly.</p>
+                </div>
+            </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

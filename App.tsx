@@ -216,6 +216,13 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 p-6 pt-0 space-y-1 overflow-y-auto">
+          <button 
+             onClick={() => fileInputRef.current?.click()}
+             className="w-full flex items-center justify-center gap-2 p-3 mb-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold shadow-md shadow-indigo-100 active:scale-95 group"
+          >
+             <Upload className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+             <span>Upload Document</span>
+          </button>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 mt-2 px-4">Documents</div>
           <NavItem tab={Tab.CONFIRMATION} label="Order Confirmation" icon={CheckSquare} />
           <NavItem tab={Tab.INVOICE} label="Invoice" icon={FileBox} />

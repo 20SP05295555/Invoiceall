@@ -5,7 +5,7 @@ import { Tab } from '../types.ts';
 import { 
   Package, MapPin, CreditCard, Bell, Settings, LogOut, 
   ChevronRight, Edit2, Save, Phone, Mail, Camera, 
-  Loader2, Trash2, Image as ImageIcon, CheckCircle, X 
+  Loader2, Trash2, Image as ImageIcon, CheckCircle, X, User, Plus 
 } from 'lucide-react';
 
 interface UserProfileProps {
@@ -13,9 +13,11 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
-  const { customer, updateCustomer, order, addGalleryItem, recentOrders, removeRecentOrder } = useData();
+  const { customer, updateCustomer, order, addGalleryItem, recentOrders, removeRecentOrder, companyInfo, updateCompanyInfo } = useData();
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
   const [editData, setEditData] = useState(customer);
+  const [editBusinessData, setEditBusinessData] = useState(companyInfo);
   const [isCapturing, setIsCapturing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -24,19 +26,39 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
     setIsEditing(true);
   };
 
+  const startEditingBusiness = () => {
+    setEditBusinessData({ ...companyInfo });
+    setIsEditingBusiness(true);
+  };
+
   const handleSave = () => {
     updateCustomer(editData);
     setIsEditing(false);
+  };
+
+  const handleSaveBusiness = () => {
+    updateCompanyInfo(editBusinessData);
+    setIsEditingBusiness(false);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
   };
 
+  const handleCancelBusiness = () => {
+    setIsEditingBusiness(false);
+  };
+
   const handleAddressChange = (index: number, value: string) => {
     const newAddr = [...editData.address];
     newAddr[index] = value;
     setEditData({ ...editData, address: newAddr });
+  };
+
+  const handleBusinessAddressChange = (index: number, value: string) => {
+    const newAddr = [...editBusinessData.address];
+    newAddr[index] = value;
+    setEditBusinessData({ ...editBusinessData, address: newAddr });
   };
 
   const handleFullPageCapture = async () => {
@@ -270,34 +292,152 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-             <div className="p-6 border-b border-gray-100 bg-gray-50/30">
-                <h3 className="font-bold text-gray-900">Contact Details</h3>
+             <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
+                <h3 className="font-bold text-gray-900">Business Information</h3>
+                {isEditingBusiness ? (
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveBusiness} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Save">
+                        <Save className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleCancelBusiness} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Cancel">
+                        <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={startEditingBusiness} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
             </div>
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-6">
                 <div>
                      <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <Phone className="w-3.5 h-3.5 text-indigo-400" /> Phone Number
+                        <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Business Name
                      </div>
-                     {isEditing ? (
-                         <EditableInput value={editData.phone} onChange={(v: string) => setEditData({...editData, phone: v})} />
+                     {isEditingBusiness ? (
+                         <EditableInput value={editBusinessData.name} onChange={(v: string) => setEditBusinessData({...editBusinessData, name: v})} />
                      ) : (
-                         <p className="text-gray-900 font-medium pl-6">{customer.phone}</p>
+                         <p className="text-gray-900 font-bold pl-6 uppercase">{companyInfo.name}</p>
                      )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                      <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <User className="w-3.5 h-3.5 text-indigo-400" /> Contact Person
+                      </div>
+                      {isEditingBusiness ? (
+                          <EditableInput value={editBusinessData.contact} onChange={(v: string) => setEditBusinessData({...editBusinessData, contact: v})} />
+                      ) : (
+                          <p className="text-gray-900 font-medium pl-6">{companyInfo.contact}</p>
+                      )}
+                  </div>
+                  <div>
+                      <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <Settings className="w-3.5 h-3.5 text-indigo-400" /> Co. Reg. No.
+                      </div>
+                      {isEditingBusiness ? (
+                          <EditableInput value={editBusinessData.regNo} onChange={(v: string) => setEditBusinessData({...editBusinessData, regNo: v})} />
+                      ) : (
+                          <p className="text-gray-900 font-medium pl-6">{companyInfo.regNo}</p>
+                      )}
+                  </div>
+                  <div>
+                      <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <Settings className="w-3.5 h-3.5 text-indigo-400" /> VAT Number
+                      </div>
+                      {isEditingBusiness ? (
+                          <EditableInput value={editBusinessData.vatNo || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, vatNo: v})} />
+                      ) : (
+                          <p className="text-gray-900 font-medium pl-6">{companyInfo.vatNo || 'N/A'}</p>
+                      )}
+                  </div>
                 </div>
                 <div>
                     <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-400" /> Delivery Address
+                        <Mail className="w-3.5 h-3.5 text-indigo-400" /> Business Email & Web
+                    </div>
+                    <div className="pl-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {isEditingBusiness ? (
+                             <>
+                                <EditableInput value={editBusinessData.email} onChange={(v: string) => setEditBusinessData({...editBusinessData, email: v})} placeholder="Business Email" />
+                                <EditableInput value={editBusinessData.website} onChange={(v: string) => setEditBusinessData({...editBusinessData, website: v})} placeholder="Website" />
+                             </>
+                        ) : (
+                            <>
+                              <p className="text-gray-700 text-sm">{companyInfo.email}</p>
+                              <p className="text-gray-700 text-sm">{companyInfo.website}</p>
+                            </>
+                        )}
+                    </div>
+                </div>
+                <div>
+                    <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <MapPin className="w-3.5 h-3.5 text-indigo-400" /> Registered Address
                     </div>
                     <div className="pl-6 space-y-1">
-                        {isEditing ? (
+                        {isEditingBusiness ? (
                              <div className="space-y-2">
-                                {editData.address.map((line, i) => (
-                                    <input key={`user-addr-edit-${i}`} value={line} onChange={(e) => handleAddressChange(i, e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-sm rounded-lg p-2" />
+                                {editBusinessData.address.map((line, i) => (
+                                    <div key={`bus-addr-edit-${i}`} className="flex gap-2">
+                                      <input value={line} onChange={(e) => handleBusinessAddressChange(i, e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-sm rounded-lg p-2" />
+                                      <button onClick={() => {
+                                        const newAddr = editBusinessData.address.filter((_, idx) => idx !== i);
+                                        setEditBusinessData({ ...editBusinessData, address: newAddr });
+                                      }} className="text-red-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
                                 ))}
+                                <button onClick={() => setEditBusinessData({ ...editBusinessData, address: [...editBusinessData.address, ""] })} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> Add Address Line</button>
                              </div>
                         ) : (
-                            customer.address.map((line, i) => <p key={`user-addr-view-${i}`} className="text-gray-700 text-sm">{line}</p>)
+                            companyInfo.address.map((line, i) => <p key={`bus-addr-view-${i}`} className="text-gray-700 text-sm">{line}</p>)
                         )}
+                    </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <CreditCard className="w-3.5 h-3.5 text-indigo-400" /> Bank Details
+                        </div>
+                    </div>
+                    
+                    <div className="pl-6 space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className="block text-[10px] text-gray-400 mb-1">Bank Name</label>
+                                {isEditingBusiness ? (
+                                    <EditableInput value={editBusinessData.bankName || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, bankName: v})} />
+                                ) : (
+                                    <p className="text-gray-900 text-sm font-medium">{companyInfo.bankName || 'Not Set'}</p>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] text-gray-400 mb-1">Sort Code</label>
+                                    {isEditingBusiness ? (
+                                        <EditableInput value={editBusinessData.sortCode || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, sortCode: v})} />
+                                    ) : (
+                                        <p className="text-gray-900 text-sm font-medium">{companyInfo.sortCode || 'Not Set'}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] text-gray-400 mb-1">Account No.</label>
+                                    {isEditingBusiness ? (
+                                        <EditableInput value={editBusinessData.accountNo || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, accountNo: v})} />
+                                    ) : (
+                                        <p className="text-gray-900 text-sm font-medium">{companyInfo.accountNo || 'Not Set'}</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] text-gray-400 mb-1">IBAN</label>
+                                {isEditingBusiness ? (
+                                    <EditableInput value={editBusinessData.iban || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, iban: v})} />
+                                ) : (
+                                    <p className="text-gray-900 text-sm font-mono">{companyInfo.iban || 'Not Set'}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
