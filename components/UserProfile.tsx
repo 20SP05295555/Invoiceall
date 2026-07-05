@@ -125,6 +125,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
     </div>
   );
 
+  const activeBankInfo = isEditingBusiness ? editBusinessData : companyInfo;
+  const isIbanShown = activeBankInfo.showIban !== undefined ? activeBankInfo.showIban : (Boolean(activeBankInfo.iban) || !activeBankInfo.routingNo);
+  const isRoutingShown = activeBankInfo.showRoutingNo !== undefined ? activeBankInfo.showRoutingNo : (Boolean(activeBankInfo.routingNo) && !activeBankInfo.iban);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       
@@ -413,6 +417,37 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] text-gray-400">Routing Number</label>
+                                        {isEditingBusiness ? (
+                                            <label className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 cursor-pointer select-none">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isRoutingShown} 
+                                                    onChange={() => {
+                                                        if (!isRoutingShown) {
+                                                            setEditBusinessData(prev => ({ ...prev, showRoutingNo: true, showIban: false }));
+                                                        } else {
+                                                            setEditBusinessData(prev => ({ ...prev, showRoutingNo: false }));
+                                                        }
+                                                    }}
+                                                    className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-300 cursor-pointer"
+                                                />
+                                                <span>Show on Document</span>
+                                            </label>
+                                        ) : (
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isRoutingShown ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                {isRoutingShown ? 'Shown on Doc' : 'Hidden on Doc'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {isEditingBusiness ? (
+                                        <EditableInput value={editBusinessData.routingNo || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, routingNo: v})} />
+                                    ) : (
+                                        <p className="text-gray-900 text-sm font-medium">{companyInfo.routingNo || 'Not Set'}</p>
+                                    )}
+                                </div>
+                                <div>
                                     <label className="block text-[10px] text-gray-400 mb-1">Sort Code</label>
                                     {isEditingBusiness ? (
                                         <EditableInput value={editBusinessData.sortCode || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, sortCode: v})} />
@@ -420,6 +455,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                                         <p className="text-gray-900 text-sm font-medium">{companyInfo.sortCode || 'Not Set'}</p>
                                     )}
                                 </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[10px] text-gray-400 mb-1">Account No.</label>
                                     {isEditingBusiness ? (
@@ -428,9 +465,40 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                                         <p className="text-gray-900 text-sm font-medium">{companyInfo.accountNo || 'Not Set'}</p>
                                     )}
                                 </div>
+                                <div>
+                                    <label className="block text-[10px] text-gray-400 mb-1">SWIFT / BIC</label>
+                                    {isEditingBusiness ? (
+                                        <EditableInput value={editBusinessData.swift || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, swift: v})} />
+                                    ) : (
+                                        <p className="text-gray-900 text-sm font-medium">{companyInfo.swift || 'Not Set'}</p>
+                                    )}
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] text-gray-400 mb-1">IBAN</label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-[10px] text-gray-400">IBAN</label>
+                                    {isEditingBusiness ? (
+                                        <label className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 cursor-pointer select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isIbanShown} 
+                                                onChange={() => {
+                                                    if (!isIbanShown) {
+                                                        setEditBusinessData(prev => ({ ...prev, showIban: true, showRoutingNo: false }));
+                                                    } else {
+                                                        setEditBusinessData(prev => ({ ...prev, showIban: false }));
+                                                    }
+                                                }}
+                                                className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-300 cursor-pointer"
+                                            />
+                                            <span>Show on Document</span>
+                                        </label>
+                                    ) : (
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isIbanShown ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                            {isIbanShown ? 'Shown on Doc' : 'Hidden on Doc'}
+                                        </span>
+                                    )}
+                                </div>
                                 {isEditingBusiness ? (
                                     <EditableInput value={editBusinessData.iban || ''} onChange={(v: string) => setEditBusinessData({...editBusinessData, iban: v})} />
                                 ) : (

@@ -32,8 +32,12 @@ export interface CompanyInfo {
   sortCode?: string;
   accountNo?: string;
   accountHolder?: string;
+  routingNo?: string;
   swift?: string;
   iban?: string;
+  showIban?: boolean;
+  showRoutingNo?: boolean;
+  vatNo?: string;
 }
 
 export interface RecentOrder {
@@ -80,6 +84,24 @@ export interface GalleryItem {
   type: 'production' | 'capture';
 }
 
+export interface SavedDocument {
+  id: string;
+  documentNumber: string;
+  title: string;
+  type: 'invoice' | 'receipt' | 'confirmation' | 'quote' | 'custom';
+  createdDate: string;
+  amount: number;
+  customerName: string;
+  itemsCount: number;
+  tags?: string[];
+  notes?: string;
+  snapshotData?: {
+    order: Order;
+    customer: Customer;
+    companyInfo: CompanyInfo;
+  };
+}
+
 export interface BusinessProfile {
   id: string;
   name: string;
@@ -88,13 +110,16 @@ export interface BusinessProfile {
   order: Order;
   gallery: GalleryItem[];
   recentOrders: RecentOrder[];
+  savedDocuments: SavedDocument[];
   lastUpdated: string;
 }
 
 export enum Tab {
+  DASHBOARD = 'DASHBOARD',
   CONFIRMATION = 'CONFIRMATION',
   INVOICE = 'INVOICE',
   RECEIPT = 'RECEIPT',
+  DOCUMENTS = 'DOCUMENTS',
   EMAIL = 'EMAIL',
   GALLERY = 'GALLERY',
   PROFILE = 'PROFILE',

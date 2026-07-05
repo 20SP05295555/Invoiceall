@@ -1,12 +1,14 @@
 
 import React, { useRef, useState } from 'react';
 import DocumentLayout, { EditableInput } from './DocumentLayout.tsx';
-import { Printer, Download, CreditCard, Loader2, Edit2, Save } from 'lucide-react';
+import { Printer, Download, CreditCard, Loader2, Edit2, Save, Image as ImageIcon } from 'lucide-react';
 import { useData } from '../contexts/DataContext.tsx';
+import { exportDocumentAsOnePagePDF, exportDocumentAsJPEG } from '../utils/exportUtils.ts';
 
 const Receipt: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingJpeg, setIsDownloadingJpeg] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { order, updateOrder, customer, updateCustomer } = useData();
 
@@ -14,31 +16,27 @@ const Receipt: React.FC = () => {
     window.print();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!contentRef.current) return;
     setIsDownloading(true);
+    try {
+      await exportDocumentAsOnePagePDF(contentRef.current, `Receipt_${order.orderNumber}.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
-    const element = contentRef.current;
-    const opt = {
-      margin: 10,
-      filename: `Receipt_${order.orderNumber}.pdf`,
-      image: { type: 'jpeg', quality: 1.0 },
-      html2canvas: { scale: 2.5, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // @ts-ignore
-    if (window.html2pdf) {
-      // @ts-ignore
-      window.html2pdf().set(opt).from(element).save().then(() => {
-        setIsDownloading(false);
-      }).catch((err: any) => {
-        console.error("PDF generation failed", err);
-        setIsDownloading(false);
-      });
-    } else {
-        console.error("html2pdf library not loaded");
-        setIsDownloading(false);
+  const handleDownloadJPEG = async () => {
+    if (!contentRef.current) return;
+    setIsDownloadingJpeg(true);
+    try {
+      await exportDocumentAsJPEG(contentRef.current, `Receipt_${order.orderNumber}.jpg`);
+    } catch (err) {
+      console.error("JPEG generation failed", err);
+    } finally {
+      setIsDownloadingJpeg(false);
     }
   };
 
@@ -73,11 +71,19 @@ const Receipt: React.FC = () => {
                 </button>
                 <button 
                     onClick={handleDownload}
-                    disabled={isDownloading}
+                    disabled={isDownloading || isDownloadingJpeg}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {isDownloading ? 'Generating...' : 'Download PDF'}
+                    {isDownloading ? 'Generating...' : 'Download PDF (1 Page)'}
+                </button>
+                <button 
+                    onClick={handleDownloadJPEG}
+                    disabled={isDownloading || isDownloadingJpeg}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                    {isDownloadingJpeg ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                    {isDownloadingJpeg ? 'Generating...' : 'JPEG Download'}
                 </button>
               </>
             )}

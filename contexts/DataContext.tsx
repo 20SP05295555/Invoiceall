@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { CompanyInfo, Customer, Order, OrderItem, GalleryItem, RecentOrder, BusinessProfile } from '../types.ts';
-import { COMPANY_INFO, CURRENT_CUSTOMER, SAMPLE_ORDER, INITIAL_GALLERY, INITIAL_RECENT_ORDERS } from '../constants.ts';
+import { CompanyInfo, Customer, Order, OrderItem, GalleryItem, RecentOrder, SavedDocument, BusinessProfile } from '../types.ts';
+import { COMPANY_INFO, CURRENT_CUSTOMER, SAMPLE_ORDER, INITIAL_GALLERY, INITIAL_RECENT_ORDERS, INITIAL_SAVED_DOCUMENTS } from '../constants.ts';
 
 interface DataContextType {
   // Profiles
@@ -30,8 +30,15 @@ interface DataContextType {
   removeGalleryItem: (id: string) => void;
   recentOrders: RecentOrder[];
   removeRecentOrder: (id: string) => void;
+  savedDocuments: SavedDocument[];
+  addSavedDocument: (doc: Omit<SavedDocument, 'id' | 'createdDate'>) => void;
+  removeSavedDocument: (id: string) => void;
   bulkUpdate: (data: { companyInfo?: Partial<CompanyInfo>, customer?: Partial<Customer>, order?: Partial<Order> }) => void;
   isAutoSaving: boolean;
+
+  // Dark Mode
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -50,10 +57,36 @@ const loadFromStorage = <T,>(key: string, fallback: T): T => {
 const DEFAULT_PROFILE_ID = 'default-profile';
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Dark Mode State
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return loadFromStorage<boolean>('hob_dark_mode', false);
+  });
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('hob_dark_mode', JSON.stringify(isDarkMode));
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+  }, []);
+
   // Profiles State
   const [profiles, setProfiles] = useState<BusinessProfile[]>(() => {
     const saved = loadFromStorage<BusinessProfile[]>('all_business_profiles', []);
-    if (saved.length > 0) return saved;
+    if (saved.length > 0) {
+      // Ensure all profiles have savedDocuments initialized
+      return saved.map(p => ({
+        ...p,
+        savedDocuments: p.savedDocuments || INITIAL_SAVED_DOCUMENTS
+      }));
+    }
     
     // Create initial profile if none exists
     return [{
@@ -64,6 +97,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       order: SAMPLE_ORDER,
       gallery: INITIAL_GALLERY,
       recentOrders: INITIAL_RECENT_ORDERS,
+      savedDocuments: INITIAL_SAVED_DOCUMENTS,
       lastUpdated: new Date().toISOString()
     }];
   });
@@ -78,6 +112,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [order, setOrder] = useState<Order>(activeProfile.order);
   const [gallery, setGallery] = useState<GalleryItem[]>(activeProfile.gallery);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>(activeProfile.recentOrders);
+  const [savedDocuments, setSavedDocuments] = useState<SavedDocument[]>(activeProfile.savedDocuments || INITIAL_SAVED_DOCUMENTS);
   
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
@@ -88,7 +123,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // First save current to profiles
       setProfiles(prev => prev.map(p => p.id === activeProfileId ? {
         ...p,
-        companyInfo, customer, order, gallery, recentOrders,
+        companyInfo, customer, order, gallery, recentOrders, savedDocuments,
         lastUpdated: new Date().toISOString()
       } : p));
 
@@ -101,8 +136,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setOrder(profile.order);
       setGallery(profile.gallery);
       setRecentOrders(profile.recentOrders);
+      setSavedDocuments(profile.savedDocuments || INITIAL_SAVED_DOCUMENTS);
     }
-  }, [activeProfileId, companyInfo, customer, order, gallery, recentOrders, profiles]);
+  }, [activeProfileId, companyInfo, customer, order, gallery, recentOrders, savedDocuments, profiles]);
 
   const addProfile = (name: string, initialCompanyInfo?: CompanyInfo) => {
     const newId = `profile_${Date.now()}`;
@@ -114,6 +150,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       order: { ...SAMPLE_ORDER, orderNumber: `2025-${Math.floor(100+Math.random()*900)}`, items: [], subtotal: 0, total: 0, amountDue: 0, amountPaid: 0 },
       gallery: [],
       recentOrders: [],
+      savedDocuments: INITIAL_SAVED_DOCUMENTS,
       lastUpdated: new Date().toISOString()
     };
     setProfiles(prev => [...prev, newProfile]);
@@ -148,25 +185,26 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Sync active profile data into profiles array
       const updatedProfiles = profiles.map(p => p.id === activeProfileId ? {
         ...p,
-        companyInfo, customer, order, gallery, recentOrders,
+        companyInfo, customer, order, gallery, recentOrders, savedDocuments,
         lastUpdated: new Date().toISOString()
       } : p);
 
       localStorage.setItem('all_business_profiles', JSON.stringify(updatedProfiles));
       localStorage.setItem('active_profile_id', activeProfileId);
       
-      // Legacy support for single profile (optional but keeps things cleaner for other components maybe)
+      // Legacy support for single profile
       localStorage.setItem('companyInfo', JSON.stringify(companyInfo));
       localStorage.setItem('customer', JSON.stringify(customer));
       localStorage.setItem('order', JSON.stringify(order));
       localStorage.setItem('gallery', JSON.stringify(gallery));
       localStorage.setItem('recentOrders', JSON.stringify(recentOrders));
+      localStorage.setItem('savedDocuments', JSON.stringify(savedDocuments));
       
       setIsAutoSaving(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [companyInfo, customer, order, gallery, recentOrders, activeProfileId, profiles]);
+  }, [companyInfo, customer, order, gallery, recentOrders, savedDocuments, activeProfileId, profiles]);
 
   const updateCompanyInfo = (info: CompanyInfo) => setCompanyInfo(info);
   const updateCustomer = (c: Customer) => setCustomer(c);
@@ -250,6 +288,19 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setRecentOrders(prev => prev.filter(order => order.id !== id));
   };
 
+  const addSavedDocument = (doc: Omit<SavedDocument, 'id' | 'createdDate'>) => {
+    const newDoc: SavedDocument = {
+      ...doc,
+      id: `doc_${Date.now()}`,
+      createdDate: new Date().toISOString().split('T')[0]
+    };
+    setSavedDocuments(prev => [newDoc, ...prev]);
+  };
+
+  const removeSavedDocument = (id: string) => {
+    setSavedDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
   return (
     <DataContext.Provider value={{ 
         profiles, activeProfileId, activeProfile, switchProfile, addProfile, removeProfile, updateProfileName, updateProfile,
@@ -259,8 +310,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addOrderItem, removeOrderItem, updateAmountPaid,
         gallery, addGalleryItem, removeGalleryItem,
         recentOrders, removeRecentOrder,
+        savedDocuments, addSavedDocument, removeSavedDocument,
         bulkUpdate,
-        isAutoSaving
+        isAutoSaving,
+        isDarkMode, toggleDarkMode
     }}>
       {children}
     </DataContext.Provider>

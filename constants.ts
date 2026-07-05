@@ -1,5 +1,5 @@
 
-import { Customer, Order, EmailMessage, GalleryItem, RecentOrder } from './types.ts';
+import { Customer, Order, EmailMessage, GalleryItem, RecentOrder, SavedDocument } from './types.ts';
 
 export const CURRENT_CUSTOMER: Customer = {
   id: '376',
@@ -24,8 +24,12 @@ export const COMPANY_INFO = {
   sortCode: '041450',
   accountNo: '58291337',
   accountHolder: 'HOB FURNITURE',
+  routingNo: '',
   swift: 'SUPAGB21XXX',
-  iban: 'GB42SUPA04145058291337'
+  iban: 'GB42SUPA04145058291337',
+  showIban: true,
+  showRoutingNo: false,
+  vatNo: ''
 };
 
 export const SAMPLE_ORDER: Order = {
@@ -124,5 +128,44 @@ export const INITIAL_GALLERY: GalleryItem[] = [
     caption: 'Fabric cutting for Alaska Madrid Chenielle',
     date: 'Sep 17, 2026',
     type: 'production'
+  }
+];
+
+export const INITIAL_SAVED_DOCUMENTS: SavedDocument[] = [
+  {
+    id: 'doc_1',
+    documentNumber: 'HOB-2026-376',
+    title: 'Order Confirmation #HOB-2026-376',
+    type: 'confirmation',
+    createdDate: '2026-09-14',
+    amount: 2000.00,
+    customerName: 'Arthur Cook',
+    itemsCount: 1,
+    tags: ['deposit-received', 'sofa', 'vip'],
+    notes: 'Initial order confirmation sent via customer portal.'
+  },
+  {
+    id: 'doc_2',
+    documentNumber: 'INV-2026-376',
+    title: 'Commercial Invoice #INV-2026-376',
+    type: 'invoice',
+    createdDate: '2026-09-14',
+    amount: 2000.00,
+    customerName: 'Arthur Cook',
+    itemsCount: 1,
+    tags: ['invoice', 'bank-transfer'],
+    notes: 'Official tax invoice with SumUp bank account details.'
+  },
+  {
+    id: 'doc_3',
+    documentNumber: 'REC-2024-892',
+    title: 'Payment Receipt #REC-2024-892',
+    type: 'receipt',
+    createdDate: '2024-08-12',
+    amount: 185.00,
+    customerName: 'Arthur Cook',
+    itemsCount: 2,
+    tags: ['paid', 'pillows'],
+    notes: 'Payment receipt for Velvet Throw Pillows.'
   }
 ];

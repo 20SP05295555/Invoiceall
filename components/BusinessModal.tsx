@@ -58,6 +58,9 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
     }
   };
 
+  const isIbanShown = info.showIban !== undefined ? info.showIban : (Boolean(info.iban) || !info.routingNo);
+  const isRoutingShown = info.showRoutingNo !== undefined ? info.showRoutingNo : (Boolean(info.routingNo) && !info.iban);
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-300">
@@ -248,9 +251,36 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Account Number</label>
                 <input 
                   type="text" 
-                  value={info.accountNo} 
+                  value={info.accountNo || ''} 
                   onChange={(e) => updateField('accountNo', e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Routing Number</label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={isRoutingShown} 
+                      onChange={() => {
+                        if (!isRoutingShown) {
+                          setInfo(prev => ({ ...prev, showRoutingNo: true, showIban: false }));
+                        } else {
+                          setInfo(prev => ({ ...prev, showRoutingNo: false }));
+                        }
+                      }}
+                      className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span>Show on Document</span>
+                  </label>
+                </div>
+                <input 
+                  type="text" 
+                  value={info.routingNo || ''} 
+                  onChange={(e) => updateField('routingNo', e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="e.g. 021000021"
                 />
               </div>
               <div>
@@ -273,7 +303,24 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">IBAN</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">IBAN</label>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={isIbanShown} 
+                      onChange={() => {
+                        if (!isIbanShown) {
+                          setInfo(prev => ({ ...prev, showIban: true, showRoutingNo: false }));
+                        } else {
+                          setInfo(prev => ({ ...prev, showIban: false }));
+                        }
+                      }}
+                      className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span>Show on Document</span>
+                  </label>
+                </div>
                 <input 
                   type="text" 
                   value={info.iban} 

@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { useData } from '../contexts/DataContext.tsx';
 import { OrderItem } from '../types.ts';
-import { Image, Upload, Trash2, Plus, Cloud, Check, Camera, Loader2, Sparkles } from 'lucide-react';
+import { Image, Upload, Trash2, Plus, Cloud, Check, Camera, Loader2, Sparkles, FolderPlus } from 'lucide-react';
 
 type DocumentMode = 'order' | 'invoice' | 'receipt';
 
@@ -90,13 +90,34 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
     customer, updateCustomer, 
     order, updateOrderItem,
     addOrderItem, removeOrderItem, updateAmountPaid,
-    addGalleryItem,
+    addGalleryItem, addSavedDocument,
     isAutoSaving
   } = useData();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isArchivedNotification, setIsArchivedNotification] = useState(false);
+
+  const handleArchiveDoc = () => {
+    addSavedDocument({
+      documentNumber: documentNumber || order.orderNumber || 'DOC-001',
+      title: `${title} #${documentNumber || order.orderNumber}`,
+      type: (mode as any) || 'confirmation',
+      amount: order.total || 0,
+      customerName: customer.name || 'Customer',
+      itemsCount: order.items.length || 1,
+      tags: [mode || 'document', 'active-snapshot'],
+      notes: `Saved snapshot of ${title} #${documentNumber} to Document Vault.`,
+      snapshotData: {
+        order: { ...order },
+        customer: { ...customer },
+        companyInfo: { ...companyInfo }
+      }
+    });
+    setIsArchivedNotification(true);
+    setTimeout(() => setIsArchivedNotification(false), 3000);
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,19 +191,40 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
       statusColor = "text-green-600 border-green-600";
   }
 
+  const isIbanShown = companyInfo.showIban !== undefined ? companyInfo.showIban : (Boolean(companyInfo.iban) || !companyInfo.routingNo);
+  const isRoutingShown = companyInfo.showRoutingNo !== undefined ? companyInfo.showRoutingNo : (Boolean(companyInfo.routingNo) && !companyInfo.iban);
+
   return (
     <div className="relative">
-      {/* Floating Capture Button */}
+      {/* Floating Buttons */}
       {!isEditing && (
+        <div className="absolute -right-4 top-0 transform translate-x-full flex flex-col gap-3 z-20 print:hidden">
           <button 
             onClick={handleCapture}
             disabled={isCapturing}
-            className="absolute -right-4 top-0 transform translate-x-full bg-white p-3 rounded-full shadow-lg border border-gray-100 hover:scale-110 active:scale-95 transition-all text-indigo-600 z-20 group print:hidden"
+            className="bg-white dark:bg-slate-800 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all text-indigo-600 dark:text-indigo-400 group relative"
             title="Snap to Gallery"
           >
             {isCapturing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-            <span className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Snap to Gallery</span>
+            <span className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Snap to Gallery</span>
           </button>
+
+          <button 
+            onClick={handleArchiveDoc}
+            className="bg-white dark:bg-slate-800 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all text-blue-600 dark:text-blue-400 group relative"
+            title="Save to Document Vault"
+          >
+            <FolderPlus className="w-5 h-5" />
+            <span className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Archive Document</span>
+          </button>
+        </div>
+      )}
+
+      {isArchivedNotification && (
+        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 animate-bounce print:hidden">
+          <Check className="w-4 h-4 text-green-400" />
+          <span className="text-sm font-medium">Document saved to Document Vault!</span>
+        </div>
       )}
 
       <div ref={docRef} className="bg-white w-full max-w-4xl mx-auto p-4 sm:p-8 md:p-12 shadow-lg min-h-0 sm:min-h-[800px] text-gray-800 font-sans relative print:shadow-none print:max-w-none print:mx-0 print:min-h-0 print:p-8 group">
@@ -430,7 +472,54 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             <div className="space-y-4">
                 <EditableTextArea value={companyInfo.paymentInstructions} onChange={(v: string) => updateCompanyInfo({...companyInfo, paymentInstructions: v})} className="text-sm text-gray-600" />
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  {['bankName', 'sortCode', 'accountNo', 'accountHolder', 'swift', 'iban'].map(f => <div key={f}><label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-tighter">{f.replace(/([A-Z])/g, ' $1')}</label><EditableInput value={(companyInfo as any)[f]} onChange={(v: string) => updateCompanyInfo({...companyInfo, [f]: v})} /></div>)}
+                  {['bankName', 'accountHolder', 'accountNo', 'sortCode', 'swift'].map(f => (
+                    <div key={f}>
+                      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-tighter">{f.replace(/([A-Z])/g, ' $1')}</label>
+                      <EditableInput value={(companyInfo as any)[f]} onChange={(v: string) => updateCompanyInfo({...companyInfo, [f]: v})} />
+                    </div>
+                  ))}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-tighter">Routing No</label>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-blue-600 cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={isRoutingShown} 
+                          onChange={() => {
+                            if (!isRoutingShown) {
+                              updateCompanyInfo({ ...companyInfo, showRoutingNo: true, showIban: false });
+                            } else {
+                              updateCompanyInfo({ ...companyInfo, showRoutingNo: false });
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 cursor-pointer"
+                        />
+                        <span>Show</span>
+                      </label>
+                    </div>
+                    <EditableInput value={companyInfo.routingNo || ''} onChange={(v: string) => updateCompanyInfo({...companyInfo, routingNo: v})} />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-tighter">IBAN</label>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-blue-600 cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={isIbanShown} 
+                          onChange={() => {
+                            if (!isIbanShown) {
+                              updateCompanyInfo({ ...companyInfo, showIban: true, showRoutingNo: false });
+                            } else {
+                              updateCompanyInfo({ ...companyInfo, showIban: false });
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 cursor-pointer"
+                        />
+                        <span>Show</span>
+                      </label>
+                    </div>
+                    <EditableInput value={companyInfo.iban || ''} onChange={(v: string) => updateCompanyInfo({...companyInfo, iban: v})} />
+                  </div>
                 </div>
             </div>
           ) : (
@@ -439,14 +528,15 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
               <div className="space-y-1">
                 <div className="flex flex-wrap gap-x-4">
                   {companyInfo.bankName && <span><span className="font-bold text-gray-900">Bank:</span> {companyInfo.bankName}</span>}
-                  {companyInfo.sortCode && <span><span className="font-bold text-gray-900">Sort Code:</span> {companyInfo.sortCode}</span>}
+                  {companyInfo.accountHolder && <span><span className="font-bold text-gray-900">Account Holder:</span> {companyInfo.accountHolder}</span>}
                   {companyInfo.accountNo && <span><span className="font-bold text-gray-900">Account No.:</span> {companyInfo.accountNo}</span>}
                 </div>
                 <div className="flex flex-wrap gap-x-4">
-                  {companyInfo.accountHolder && <span><span className="font-bold text-gray-900">Account Holder:</span> {companyInfo.accountHolder}</span>}
+                  {companyInfo.routingNo && isRoutingShown && <span><span className="font-bold text-gray-900">Routing No.:</span> {companyInfo.routingNo}</span>}
+                  {companyInfo.sortCode && <span><span className="font-bold text-gray-900">Sort Code:</span> {companyInfo.sortCode}</span>}
                   {companyInfo.swift && <span><span className="font-bold text-gray-900">SWIFT:</span> {companyInfo.swift}</span>}
                 </div>
-                {companyInfo.iban && <div><span className="font-bold text-gray-900">IBAN:</span> {companyInfo.iban}</div>}
+                {companyInfo.iban && isIbanShown && <div><span className="font-bold text-gray-900">IBAN:</span> {companyInfo.iban}</div>}
               </div>
             </div>
           )}

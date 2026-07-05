@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Tab } from '../types.ts';
-import { Save, ArrowLeft, Lock, Bell, Shield, Smartphone, Mail, Check, Briefcase, Trash2, Edit, Plus } from 'lucide-react';
+import { Save, ArrowLeft, Lock, Bell, Shield, Smartphone, Mail, Check, Briefcase, Trash2, Edit, Plus, Sun, Moon } from 'lucide-react';
 import { useData } from '../contexts/DataContext.tsx';
 import BusinessModal from './BusinessModal.tsx';
 import { CompanyInfo } from '../types.ts';
@@ -11,7 +11,7 @@ interface AccountSettingsProps {
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({ onNavigate }) => {
-  const { profiles, activeProfileId, switchProfile, addProfile, removeProfile, updateProfile } = useData();
+  const { profiles, activeProfileId, switchProfile, addProfile, removeProfile, updateProfile, isDarkMode, toggleDarkMode } = useData();
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
@@ -207,6 +207,45 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ onNavigate }) => {
                 onChange={(v: boolean) => setNotifications({...notifications, securityAlerts: v})}
              />
           </div>
+        </div>
+      </div>
+
+      {/* Appearance & Interface Theme */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-lg">
+              {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900 dark:text-white">Interface Theme & Lighting</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Optimize visual contrast for furniture design review environments</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 flex items-center justify-between">
+          <div>
+            <p className="font-medium text-gray-900 dark:text-white text-sm">High-Contrast Dark Mode</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Switch all components to a low-glare dark palette ideal for showroom or workshop reviews.</p>
+          </div>
+          <button
+            onClick={toggleDarkMode}
+            className={`px-4 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-2 ${
+              isDarkMode 
+                ? 'bg-amber-500 text-gray-950 hover:bg-amber-400' 
+                : 'bg-gray-900 text-white hover:bg-gray-800'
+            }`}
+          >
+            {isDarkMode ? (
+              <>
+                <Sun className="w-4 h-4" /> Active: Dark Theme
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4" /> Switch to Dark Theme
+              </>
+            )}
+          </button>
         </div>
       </div>
 
