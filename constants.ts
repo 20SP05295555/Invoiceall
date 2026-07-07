@@ -1,5 +1,18 @@
 
-import { Customer, Order, EmailMessage, GalleryItem, RecentOrder, SavedDocument } from './types.ts';
+import { Customer, Order, EmailMessage, GalleryItem, RecentOrder, SavedDocument, CountryCurrencyOption, CompanyInfo } from './types.ts';
+
+export const COUNTRY_CURRENCY_OPTIONS: CountryCurrencyOption[] = [
+  { country: 'United Kingdom', currencyCode: 'GBP', currencySymbol: '£' },
+  { country: 'United States', currencyCode: 'USD', currencySymbol: '$' },
+  { country: 'European Union', currencyCode: 'EUR', currencySymbol: '€' },
+  { country: 'Canada', currencyCode: 'CAD', currencySymbol: 'CA$' },
+  { country: 'Australia', currencyCode: 'AUD', currencySymbol: 'A$' },
+  { country: 'Japan', currencyCode: 'JPY', currencySymbol: '¥' },
+  { country: 'Switzerland', currencyCode: 'CHF', currencySymbol: 'CHF ' },
+  { country: 'United Arab Emirates', currencyCode: 'AED', currencySymbol: 'AED ' },
+  { country: 'India', currencyCode: 'INR', currencySymbol: '₹' },
+  { country: 'Singapore', currencyCode: 'SGD', currencySymbol: 'S$' },
+];
 
 export const CURRENT_CUSTOMER: Customer = {
   id: '376',
@@ -10,7 +23,7 @@ export const CURRENT_CUSTOMER: Customer = {
   avatarUrl: 'https://picsum.photos/seed/arthur/200/200'
 };
 
-export const COMPANY_INFO = {
+export const COMPANY_INFO: CompanyInfo = {
   name: 'HOB FURNITURE',
   contact: 'Emma Kitchen',
   address: ['4th Floor 205 Regent Street', 'London - W1B 4HB'],
@@ -18,7 +31,7 @@ export const COMPANY_INFO = {
   email: 'customerservice@hobfurniture.co.uk',
   website: 'www.hobfurniture.co.uk',
   terms: 'Deposit amount only, balance due upon completion',
-  paymentInstructions: 'Please pay this invoice via bank transfer (see details below) and include this payment reference: 39838265.',
+  paymentInstructions: 'Please pay this invoice via bank transfer (see details below) and include this payment reference ⬇️',
   logoUrl: 'https://placehold.co/150x80/2563eb/ffffff?text=HOB+FURNITURE',
   bankName: 'SUMUP LIMITED',
   sortCode: '041450',
@@ -29,7 +42,39 @@ export const COMPANY_INFO = {
   iban: 'GB42SUPA04145058291337',
   showIban: true,
   showRoutingNo: false,
-  vatNo: ''
+  vatNo: '',
+  country: 'United Kingdom',
+  currencyCode: 'GBP',
+  currencySymbol: '£',
+  defaultProducts: [
+    { id: 'dp_1', description: 'Bespoke Oak Dining Table (6-Seater)', price: 1450.00, unit: 'pcs', details: ['Solid white oak finish', 'Protected wax coating'] },
+    { id: 'dp_2', description: 'Handcrafted Velvet Lounge Armchair', price: 650.00, unit: 'pcs', details: ['Deep cushioning', 'Teak wood legs'] },
+    { id: 'dp_3', description: 'Modular Walnut Bookshelf Unit', price: 890.00, unit: 'unit', details: ['Adjustable shelves', 'Satin finish'] },
+    { id: 'dp_4', description: 'Package Removal Service', price: 29.00, unit: 'service', details: ['Eco-friendly disposal'] }
+  ],
+  enableVat: false,
+  vatRate: 20,
+  enableDelivery: false,
+  deliveryCost: 25.00,
+  deliveryLabel: 'Delivery & Shipping Fee',
+  invoicePrefix: 'INV-',
+  orderPrefix: 'ORD-',
+  receiptPrefix: 'REC-'
+};
+
+export const extractDocReference = (docNo?: string): string => {
+  if (!docNo) return '';
+  const stripped = docNo.replace(/^[A-Za-z#._\s\-/:]+?(?=\d)/, '').trim();
+  if (stripped) return stripped;
+  return docNo.replace(/^[A-Za-z#._\s]+[-/:]\s*/, '').trim() || docNo;
+};
+
+export const cleanPaymentInstructions = (instructions?: string): string => {
+  if (!instructions) return '';
+  if (instructions.includes('39838265') || /include this payment reference[:\s]+\d+/i.test(instructions)) {
+    return 'Please pay this invoice via bank transfer (see details below) and include this payment reference ⬇️';
+  }
+  return instructions;
 };
 
 export const SAMPLE_ORDER: Order = {
@@ -39,7 +84,7 @@ export const SAMPLE_ORDER: Order = {
   dueDate: '19/09/2026',
   paymentDate: '14/09/2026',
   paymentMethod: 'Bank Transfer',
-  paymentReference: '39838265',
+  paymentReference: '2026-376',
   status: 'Confirmed',
   items: [
     {

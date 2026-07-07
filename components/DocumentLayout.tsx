@@ -2,7 +2,8 @@
 import React, { useRef, useState } from 'react';
 import { useData } from '../contexts/DataContext.tsx';
 import { OrderItem } from '../types.ts';
-import { Image, Upload, Trash2, Plus, Cloud, Check, Camera, Loader2, Sparkles, FolderPlus } from 'lucide-react';
+import { extractDocReference, cleanPaymentInstructions } from '../constants.ts';
+import { Image, Upload, Trash2, Plus, Cloud, Check, Camera, Loader2, Sparkles, FolderPlus, Package, Tag, Save } from 'lucide-react';
 
 type DocumentMode = 'order' | 'invoice' | 'receipt';
 
@@ -88,16 +89,55 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
   const { 
     companyInfo, updateCompanyInfo, 
     customer, updateCustomer, 
-    order, updateOrderItem,
+    order, updateOrder, updateOrderItem,
     addOrderItem, removeOrderItem, updateAmountPaid,
     addGalleryItem, addSavedDocument,
-    isAutoSaving
+    isAutoSaving, currencySymbol, currencyCode
   } = useData();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isArchivedNotification, setIsArchivedNotification] = useState(false);
+
+  const [customDesc, setCustomDesc] = useState('');
+  const [customUnit, setCustomUnit] = useState('each');
+  const [customPrice, setCustomPrice] = useState('');
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [selectedDefaultId, setSelectedDefaultId] = useState('');
+
+  const handleAddCustomItem = () => {
+    if (!customDesc.trim()) return;
+    const priceNum = parseFloat(customPrice) || 0;
+    addOrderItem(customDesc.trim(), priceNum, customUnit.trim() || 'each');
+    
+    if (saveAsDefault) {
+      const newDefault = {
+        id: `dp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        description: customDesc.trim(),
+        price: priceNum,
+        unit: customUnit.trim() || 'each'
+      };
+      updateCompanyInfo({
+        ...companyInfo,
+        defaultProducts: [...(companyInfo.defaultProducts || []), newDefault]
+      });
+    }
+    setCustomDesc('');
+    setCustomPrice('');
+    setCustomUnit('each');
+    setSaveAsDefault(false);
+  };
+
+  const handleSelectDefaultProduct = (prodId: string) => {
+    setSelectedDefaultId(prodId);
+    if (!prodId) return;
+    const found = companyInfo.defaultProducts?.find(p => p.id === prodId);
+    if (found) {
+      addOrderItem(found.description, found.price, found.unit || 'each', found.details);
+      setSelectedDefaultId('');
+    }
+  };
 
   const handleArchiveDoc = () => {
     addSavedDocument({
@@ -194,6 +234,11 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
   const isIbanShown = companyInfo.showIban !== undefined ? companyInfo.showIban : (Boolean(companyInfo.iban) || !companyInfo.routingNo);
   const isRoutingShown = companyInfo.showRoutingNo !== undefined ? companyInfo.showRoutingNo : (Boolean(companyInfo.routingNo) && !companyInfo.iban);
 
+  const autoDocRef = extractDocReference(documentNumber || order.orderNumber);
+  const effectivePaymentRef = order.paymentReference !== undefined && order.paymentReference !== ''
+    ? order.paymentReference
+    : autoDocRef;
+
   return (
     <div className="relative">
       {/* Floating Buttons */}
@@ -223,11 +268,65 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
       {isArchivedNotification && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 animate-bounce print:hidden">
           <Check className="w-4 h-4 text-green-400" />
-          <span className="text-sm font-medium">Document saved to Document Vault!</span>
+          <span className="text-sm font-medium">Document saved to {companyInfo.name}'s Vault for life!</span>
         </div>
       )}
 
-      <div ref={docRef} className="bg-white w-full max-w-4xl mx-auto p-4 sm:p-8 md:p-12 shadow-lg min-h-0 sm:min-h-[800px] text-gray-800 font-sans relative print:shadow-none print:max-w-none print:mx-0 print:min-h-0 print:p-8 group">
+      {/* Prominent Lifetime Save & Vault Action Bar */}
+      <div className="max-w-4xl mx-auto mb-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-500/20 text-indigo-300 rounded-xl">
+            <FolderPlus className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+              Lifetime Document Vault ({companyInfo.name})
+            </h4>
+            <p className="text-[11px] text-indigo-200">
+              Save this document permanently to {companyInfo.name}'s vault. Saved for life & deletable anytime.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleArchiveDoc}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow transition-all"
+          >
+            <Save className="w-3.5 h-3.5" /> Save to Vault
+          </button>
+          {!isEditing && (
+            <button
+              onClick={handleCapture}
+              disabled={isCapturing}
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all"
+              title="Snap to Gallery"
+            >
+              {isCapturing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              <span>Snap</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div ref={docRef} className="w-full max-w-4xl mx-auto p-4 sm:p-8 md:p-12 shadow-lg min-h-0 sm:min-h-[800px] text-gray-800 font-sans relative print:shadow-none print:max-w-none print:mx-0 print:min-h-0 print:p-8 group" style={{ backgroundColor: companyInfo.documentBgColor || '#ffffff' }}>
+        {companyInfo.templateDesign === 'modern' && (
+          <div className="h-2 w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 mb-6 rounded-full"></div>
+        )}
+        {companyInfo.templateDesign === 'usa' && (
+          <div className="text-[10px] font-black uppercase tracking-widest text-indigo-800 bg-indigo-50 border-b border-indigo-200 px-3 py-1 mb-4 inline-block rounded">
+            USA Commercial Invoice Standard • Terms: Net 30
+          </div>
+        )}
+        {companyInfo.templateDesign === 'uk' && (
+          <div className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 border-b border-emerald-200 px-3 py-1 mb-4 inline-block rounded">
+            UK HMRC VAT Compliant Document
+          </div>
+        )}
+        {companyInfo.templateDesign === 'canada' && (
+          <div className="text-[10px] font-black uppercase tracking-widest text-red-800 bg-red-50 border-b border-red-200 px-3 py-1 mb-4 inline-block rounded">
+            Canada GST/HST Commercial Invoice / Facture
+          </div>
+        )}
         
         {isEditing && (
           <div className="absolute top-4 right-4 flex items-center gap-1.5 text-xs font-medium text-gray-400 print:hidden">
@@ -293,26 +392,12 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
                   ))}
                   <button onClick={() => updateCompanyInfo({ ...companyInfo, address: [...companyInfo.address, ""] })} className="text-[10px] text-blue-500 hover:text-blue-700 flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity"><Plus className="w-3 h-3" /> Add Address Line</button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <EditableInput value={companyInfo.regNo} onChange={(v: string) => updateCompanyInfo({...companyInfo, regNo: v})} className="text-xs text-gray-400" placeholder="Co. Reg. No." />
-                  <EditableInput value={companyInfo.vatNo || ''} onChange={(v: string) => updateCompanyInfo({...companyInfo, vatNo: v})} className="text-xs text-gray-400" placeholder="VAT Number" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-2">
-                  <EditableInput value={companyInfo.email} onChange={(v: string) => updateCompanyInfo({...companyInfo, email: v})} className="text-xs text-gray-400" placeholder="Email" />
-                  <EditableInput value={companyInfo.website} onChange={(v: string) => updateCompanyInfo({...companyInfo, website: v})} className="text-xs text-gray-400" placeholder="Website" />
-                </div>
                 <EditableInput value={companyInfo.name} onChange={(v: string) => updateCompanyInfo({...companyInfo, name: v})} className="text-2xl font-bold uppercase text-black mt-2" placeholder="Company Name" />
               </div>
             ) : (
               <>
                 <h2 className="text-sm font-medium text-gray-500 mb-1">{companyInfo.contact}</h2>
-                <p className="text-sm text-gray-500 mb-2">{companyInfo.address.join(' - ')}</p>
-                <div className="flex flex-wrap gap-4 text-[10px] text-gray-400 font-mono mb-4">
-                  <span>REG: {companyInfo.regNo}</span>
-                  {companyInfo.vatNo && <span>VAT: {companyInfo.vatNo}</span>}
-                  <span>{companyInfo.email}</span>
-                  <span>{companyInfo.website}</span>
-                </div>
+                <p className="text-sm text-gray-500 mb-4">{companyInfo.address.join(' - ')}</p>
                 <h1 className="text-2xl font-bold tracking-wide uppercase text-black">{companyInfo.name}</h1>
               </>
             )}
@@ -323,6 +408,10 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
                   <div className="flex items-center gap-2 w-full justify-start sm:justify-end">
                       <span>Co. Reg.:</span>
                       <EditableInput value={companyInfo.regNo} onChange={(v: string) => updateCompanyInfo({...companyInfo, regNo: v})} className="w-full max-w-[140px]" align="right" />
+                  </div>
+                  <div className="flex items-center gap-2 w-full justify-start sm:justify-end">
+                      <span>VAT No.:</span>
+                      <EditableInput value={companyInfo.vatNo || ''} onChange={(v: string) => updateCompanyInfo({...companyInfo, vatNo: v})} className="w-full max-w-[140px]" align="right" placeholder="VAT No." />
                   </div>
                   <div className="flex items-center gap-2 w-full justify-start sm:justify-end">
                       <span>Email:</span>
@@ -336,6 +425,7 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             ) : (
               <>
                 <p>Co. Reg. No.: {companyInfo.regNo}</p>
+                {companyInfo.vatNo ? <p>VAT No.: {companyInfo.vatNo}</p> : null}
                 <p>Email: {companyInfo.email}</p>
                 <p>Website: {companyInfo.website}</p>
               </>
@@ -378,7 +468,19 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
               <span className="font-bold text-gray-900 shrink-0">
                 {isEditing && onTitleChange ? <EditableInput value={title} onChange={onTitleChange} className="w-24" /> : <>{title}:</>}
               </span>
-              {isEditing && onDocumentNumberChange ? <EditableInput value={documentNumber} onChange={onDocumentNumberChange} className="w-full sm:w-32" align="right" /> : <span className="text-gray-700">{documentNumber}</span>}
+              {isEditing && onDocumentNumberChange ? (
+                <EditableInput 
+                  value={documentNumber} 
+                  onChange={(v: string) => {
+                    onDocumentNumberChange(v);
+                    updateOrder({ ...order, orderNumber: v, paymentReference: extractDocReference(v) });
+                  }} 
+                  className="w-full sm:w-32" 
+                  align="right" 
+                />
+              ) : (
+                <span className="text-gray-700">{documentNumber}</span>
+              )}
             </div>
             <div className="mb-2 flex justify-start sm:justify-end items-center gap-2">
               <span className="font-bold text-gray-900 shrink-0">
@@ -439,26 +541,176 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             </div>
           ))}
           {isEditing && (
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button onClick={() => addOrderItem()} className="flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 border-dashed">
-                <Plus className="w-4 h-4" /> Add New Item
-              </button>
-              <button 
-                onClick={() => addOrderItem("Package Removal Service", 29)} 
-                className="flex items-center gap-2 px-6 py-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-200 border-dashed"
-              >
-                <Sparkles className="w-4 h-4" /> Package Removal Service (£29)
-              </button>
+            <div className="mt-6 bg-gray-50/90 dark:bg-slate-800/80 p-5 rounded-2xl border border-gray-200/80 dark:border-slate-700 space-y-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 dark:border-slate-700 pb-3">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                    <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    Add Products to Document ({companyInfo.name})
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Select from {companyInfo.name}'s default products or add a custom item
+                  </p>
+                </div>
+              </div>
+
+              {/* Default Saved Products Selector */}
+              {companyInfo.defaultProducts && companyInfo.defaultProducts.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-indigo-500" /> Select Default Product
+                    </label>
+                    <select
+                      value={selectedDefaultId}
+                      onChange={(e) => handleSelectDefaultProduct(e.target.value)}
+                      className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      <option value="">-- Choose saved product to add --</option>
+                      {companyInfo.defaultProducts.map((prod) => (
+                        <option key={prod.id} value={prod.id}>
+                          {prod.description} — {currencySymbol}{prod.price.toFixed(2)} ({prod.unit || 'each'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {companyInfo.defaultProducts.map((prod) => (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        onClick={() => addOrderItem(prod.description, prod.price, prod.unit || 'each', prod.details)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-gray-800 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl text-xs font-medium border border-gray-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition shadow-xs group"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                        <span>{prod.description}</span>
+                        <span className="font-mono bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded text-[11px] font-bold">
+                          {currencySymbol}{prod.price.toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 dark:text-gray-400 italic bg-white dark:bg-slate-900 p-3 rounded-xl border border-gray-100 dark:border-slate-800">
+                  No default products configured for {companyInfo.name}. You can save custom products below or manage default products in Account Settings / Business Profile.
+                </div>
+              )}
+
+              {/* Custom Product Selection Option */}
+              <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2.5">
+                  Custom Product Selection / Add New Item
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                  <div className="sm:col-span-5">
+                    <input
+                      type="text"
+                      placeholder="Custom product or service description..."
+                      value={customDesc}
+                      onChange={(e) => setCustomDesc(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <input
+                      type="text"
+                      placeholder="Unit (e.g. pcs)"
+                      value={customUnit}
+                      onChange={(e) => setCustomUnit(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        placeholder="Price"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl pl-6 pr-3 py-2 text-xs font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddCustomItem}
+                      className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Product
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="saveAsDefaultProduct"
+                    checked={saveAsDefault}
+                    onChange={(e) => setSaveAsDefault(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  />
+                  <label htmlFor="saveAsDefaultProduct" className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+                    Save this custom product as a default item in <span className="font-bold">{companyInfo.name}</span>'s catalog
+                  </label>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end mb-12">
-          <div className="w-full sm:w-1/2 max-w-xs">
-            <div className="flex justify-between py-2 border-b border-gray-200"><span className="text-gray-600 text-[11px] sm:text-sm">Subtotal without VAT</span><span className="font-mono text-gray-900 text-[11px] sm:text-sm">{order.subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between py-2 border-b border-gray-200"><span className="font-bold text-gray-900 text-[11px] sm:text-sm">Total GBP</span><span className="font-bold font-mono text-gray-900 text-[11px] sm:text-sm">{order.total.toFixed(2)}</span></div>
-            <div className={`flex justify-between py-2 text-[11px] sm:text-sm ${isEditing ? 'bg-yellow-50/50 -mx-2 px-2 rounded' : ''}`}><span className="text-gray-600">Amount Paid</span><span className="font-mono text-gray-900">{isEditing ? <EditableInput type="number" value={order.amountPaid} onChange={(v: string) => updateAmountPaid(parseFloat(v) || 0)} className="w-24 font-bold" align="right" /> : (mode === 'order' && order.amountPaid === 0 ? '0.00' : `-${order.amountPaid.toFixed(2)}`)}</span></div>
-            <div className="flex justify-between py-2 border-t border-black mt-2"><span className="font-bold text-gray-900 text-[11px] sm:text-sm">Amount Due (GBP)</span><span className="font-bold font-mono text-gray-900 text-[11px] sm:text-sm">{order.amountDue.toFixed(2)}</span></div>
+        <div className="flex flex-col sm:flex-row justify-between gap-6 mb-12">
+          {/* Editing Toggles for VAT & Delivery */}
+          <div className="w-full sm:w-1/2">
+            {isEditing && (
+              <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 space-y-3">
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Document Tax & Delivery Options</p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-gray-800 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(companyInfo.enableVat)}
+                      onChange={(e) => updateCompanyInfo({ ...companyInfo, enableVat: e.target.checked })}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    />
+                    <span>Charge VAT ({companyInfo.vatRate ?? 20}%)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-gray-800 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(companyInfo.enableDelivery)}
+                      onChange={(e) => updateCompanyInfo({ ...companyInfo, enableDelivery: e.target.checked })}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    />
+                    <span>Charge Delivery ({currencySymbol}{companyInfo.deliveryCost ?? 25})</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="w-full sm:w-1/2 max-w-xs ml-auto">
+            <div className="flex justify-between py-2 border-b border-gray-200"><span className="text-gray-600 text-[11px] sm:text-sm">Subtotal without VAT</span><span className="font-mono text-gray-900 text-[11px] sm:text-sm">{currencySymbol}{order.subtotal.toFixed(2)}</span></div>
+            
+            {(companyInfo.enableVat || order.tax > 0) && (
+              <div className="flex justify-between py-2 border-b border-gray-200 text-indigo-900 bg-indigo-50/50 -mx-2 px-2 rounded">
+                <span className="text-[11px] sm:text-sm font-medium">VAT ({companyInfo.vatRate ?? 20}%)</span>
+                <span className="font-mono font-bold text-[11px] sm:text-sm">{currencySymbol}{order.tax.toFixed(2)}</span>
+              </div>
+            )}
+
+            {(companyInfo.enableDelivery || (order.shipping && order.shipping > 0)) && (
+              <div className="flex justify-between py-2 border-b border-gray-200 text-emerald-900 bg-emerald-50/50 -mx-2 px-2 rounded">
+                <span className="text-[11px] sm:text-sm font-medium">{companyInfo.deliveryLabel || 'Delivery Fee'}</span>
+                <span className="font-mono font-bold text-[11px] sm:text-sm">{currencySymbol}{(order.shipping ?? companyInfo.deliveryCost ?? 0).toFixed(2)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between py-2 border-b border-gray-200"><span className="font-bold text-gray-900 text-[11px] sm:text-sm">Total {currencyCode}</span><span className="font-bold font-mono text-gray-900 text-[11px] sm:text-sm">{currencySymbol}{order.total.toFixed(2)}</span></div>
+            <div className={`flex justify-between py-2 text-[11px] sm:text-sm ${isEditing ? 'bg-yellow-50/50 -mx-2 px-2 rounded' : ''}`}><span className="text-gray-600">Amount Paid</span><span className="font-mono text-gray-900">{isEditing ? <EditableInput type="number" value={order.amountPaid} onChange={(v: string) => updateAmountPaid(parseFloat(v) || 0)} className="w-24 font-bold" align="right" /> : (mode === 'order' && order.amountPaid === 0 ? `${currencySymbol}0.00` : `-${currencySymbol}${order.amountPaid.toFixed(2)}`)}</span></div>
+            <div className="flex justify-between py-2 border-t border-black mt-2"><span className="font-bold text-gray-900 text-[11px] sm:text-sm">Amount Due ({currencyCode})</span><span className="font-bold font-mono text-gray-900 text-[11px] sm:text-sm">{currencySymbol}{order.amountDue.toFixed(2)}</span></div>
           </div>
         </div>
 
@@ -470,7 +722,26 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
           <h4 className="font-bold text-sm text-gray-900 mb-2">Payment Instructions</h4>
           {isEditing ? (
             <div className="space-y-4">
-                <EditableTextArea value={companyInfo.paymentInstructions} onChange={(v: string) => updateCompanyInfo({...companyInfo, paymentInstructions: v})} className="text-sm text-gray-600" />
+                <EditableTextArea value={cleanPaymentInstructions(companyInfo.paymentInstructions)} onChange={(v: string) => updateCompanyInfo({...companyInfo, paymentInstructions: v})} className="text-sm text-gray-600" />
+                
+                <div className="bg-indigo-50/80 p-3.5 rounded-xl border border-indigo-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-indigo-950 uppercase tracking-tight flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-indigo-600" /> Payment Reference No. (Auto-Synced with Document No.)
+                    </label>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded border border-indigo-200">Editable</span>
+                  </div>
+                  <EditableInput 
+                    value={effectivePaymentRef} 
+                    onChange={(v: string) => updateOrder({ ...order, paymentReference: v })} 
+                    className="font-mono font-bold text-indigo-950 bg-white px-2.5 py-1.5 border border-indigo-300 rounded text-sm shadow-sm" 
+                    placeholder="e.g. 2026- 547"
+                  />
+                  <p className="text-[11px] text-indigo-700/80">
+                    Automatically extracts number from document ({documentNumber || order.orderNumber}) when changed. You can also edit it manually here.
+                  </p>
+                </div>
+
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   {['bankName', 'accountHolder', 'accountNo', 'sortCode', 'swift'].map(f => (
                     <div key={f}>
@@ -524,7 +795,17 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             </div>
           ) : (
             <div className="text-sm text-gray-600">
-              {companyInfo.paymentInstructions && <p className="mb-4">{companyInfo.paymentInstructions}</p>}
+              {companyInfo.paymentInstructions && <p className="mb-3">{cleanPaymentInstructions(companyInfo.paymentInstructions)}</p>}
+              
+              <div className="mb-3 p-2.5 bg-indigo-50/60 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-gray-900 dark:text-gray-200 text-xs sm:text-sm flex items-center gap-1.5">
+                  <Tag className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Payment Reference No.:
+                </span>
+                <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-sm sm:text-base bg-white dark:bg-slate-900 px-3 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shadow-sm tracking-wide">
+                  {effectivePaymentRef}
+                </span>
+              </div>
+
               <div className="space-y-1">
                 <div className="flex flex-wrap gap-x-4">
                   {companyInfo.bankName && <span><span className="font-bold text-gray-900">Bank:</span> {companyInfo.bankName}</span>}
@@ -541,6 +822,25 @@ const DocumentLayout: React.FC<DocumentLayoutProps> = ({
             </div>
           )}
         </div>
+
+        {companyInfo.enableSignature && (
+          <div className="flex flex-col sm:flex-row justify-between items-end mt-8 pt-6 border-t border-gray-200 dark:border-slate-700">
+            <div className="flex-1"></div>
+            <div className="text-center sm:text-right min-w-[220px]">
+              <div className="font-signature text-3xl sm:text-4xl text-indigo-950 dark:text-indigo-900 font-bold transform -rotate-3 mb-1 select-none">
+                {companyInfo.signatureText || companyInfo.contact || companyInfo.name}
+              </div>
+              <div className="border-t-2 border-gray-400 pt-1.5 inline-block min-w-[190px]">
+                <p className="text-xs font-bold text-gray-800">
+                  {companyInfo.signatureText || companyInfo.contact || companyInfo.name}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  {companyInfo.signatureTitle || 'Authorized Signatory'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {(mode === 'invoice' || mode === 'receipt') && <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border-[6px] ${statusColor} px-8 py-2 text-5xl font-black opacity-10 rotate-[-15deg] uppercase tracking-widest pointer-events-none whitespace-nowrap z-0`}>{statusText}</div>}
       </div>

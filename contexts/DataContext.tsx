@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { CompanyInfo, Customer, Order, OrderItem, GalleryItem, RecentOrder, SavedDocument, BusinessProfile } from '../types.ts';
-import { COMPANY_INFO, CURRENT_CUSTOMER, SAMPLE_ORDER, INITIAL_GALLERY, INITIAL_RECENT_ORDERS, INITIAL_SAVED_DOCUMENTS } from '../constants.ts';
+import { COMPANY_INFO, CURRENT_CUSTOMER, SAMPLE_ORDER, INITIAL_GALLERY, INITIAL_RECENT_ORDERS, INITIAL_SAVED_DOCUMENTS, extractDocReference, cleanPaymentInstructions } from '../constants.ts';
 
 interface DataContextType {
   // Profiles
@@ -22,7 +22,7 @@ interface DataContextType {
   order: Order;
   updateOrder: (order: Order) => void;
   updateOrderItem: (index: number, field: keyof OrderItem, value: any) => void;
-  addOrderItem: (description?: string, price?: number) => void;
+  addOrderItem: (description?: string, price?: number, unit?: string, details?: string[]) => void;
   removeOrderItem: (index: number) => void;
   updateAmountPaid: (amount: number) => void;
   gallery: GalleryItem[];
@@ -39,6 +39,11 @@ interface DataContextType {
   // Dark Mode
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+
+  // Currency Helpers
+  currencySymbol: string;
+  currencyCode: string;
+  formatCurrency: (amount: number, digits?: number) => string;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -81,9 +86,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profiles, setProfiles] = useState<BusinessProfile[]>(() => {
     const saved = loadFromStorage<BusinessProfile[]>('all_business_profiles', []);
     if (saved.length > 0) {
-      // Ensure all profiles have savedDocuments initialized
+      // Ensure all profiles have savedDocuments and defaultProducts initialized
       return saved.map(p => ({
         ...p,
+        companyInfo: {
+          ...p.companyInfo,
+          paymentInstructions: cleanPaymentInstructions(p.companyInfo?.paymentInstructions),
+          defaultProducts: p.companyInfo?.defaultProducts || (p.companyInfo?.name === 'HOB FURNITURE' ? COMPANY_INFO.defaultProducts : [])
+        },
         savedDocuments: p.savedDocuments || INITIAL_SAVED_DOCUMENTS
       }));
     }
@@ -107,7 +117,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Current Profile Data state (individual for reactivity)
   const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0];
   
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(activeProfile.companyInfo);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    ...activeProfile.companyInfo,
+    paymentInstructions: cleanPaymentInstructions(activeProfile.companyInfo?.paymentInstructions),
+    defaultProducts: activeProfile.companyInfo?.defaultProducts || (activeProfile.companyInfo?.name === 'HOB FURNITURE' ? COMPANY_INFO.defaultProducts : [])
+  });
   const [customer, setCustomer] = useState<Customer>(activeProfile.customer);
   const [order, setOrder] = useState<Order>(activeProfile.order);
   const [gallery, setGallery] = useState<GalleryItem[]>(activeProfile.gallery);
@@ -131,7 +145,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setActiveProfileId(id);
       
       // Then load new data
-      setCompanyInfo(profile.companyInfo);
+      setCompanyInfo({
+        ...profile.companyInfo,
+        paymentInstructions: cleanPaymentInstructions(profile.companyInfo?.paymentInstructions),
+        defaultProducts: profile.companyInfo?.defaultProducts || (profile.companyInfo?.name === 'HOB FURNITURE' ? COMPANY_INFO.defaultProducts : [])
+      });
       setCustomer(profile.customer);
       setOrder(profile.order);
       setGallery(profile.gallery);
@@ -142,12 +160,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addProfile = (name: string, initialCompanyInfo?: CompanyInfo) => {
     const newId = `profile_${Date.now()}`;
+    const randNum = `2026-${Math.floor(100+Math.random()*900)}`;
     const newProfile: BusinessProfile = {
       id: newId,
       name,
       companyInfo: initialCompanyInfo || COMPANY_INFO,
       customer: CURRENT_CUSTOMER,
-      order: { ...SAMPLE_ORDER, orderNumber: `2025-${Math.floor(100+Math.random()*900)}`, items: [], subtotal: 0, total: 0, amountDue: 0, amountPaid: 0 },
+      order: { ...SAMPLE_ORDER, orderNumber: randNum, paymentReference: extractDocReference(randNum), items: [], subtotal: 0, total: 0, amountDue: 0, amountPaid: 0 },
       gallery: [],
       recentOrders: [],
       savedDocuments: INITIAL_SAVED_DOCUMENTS,
@@ -206,32 +225,51 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => clearTimeout(timer);
   }, [companyInfo, customer, order, gallery, recentOrders, savedDocuments, activeProfileId, profiles]);
 
-  const updateCompanyInfo = (info: CompanyInfo) => setCompanyInfo(info);
+  const calculateTotals = (items: OrderItem[], amountPaid: number, infoOverride?: CompanyInfo) => {
+    const activeInfo = infoOverride || companyInfo;
+    const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+    const tax = activeInfo.enableVat ? (subtotal * (activeInfo.vatRate ?? 20)) / 100 : 0;
+    const shipping = activeInfo.enableDelivery ? (activeInfo.deliveryCost ?? 25) : 0;
+    const total = subtotal + tax + shipping;
+    const amountDue = Math.max(0, total - amountPaid);
+    return { subtotal, tax, shipping, total, amountDue };
+  };
+
+  const updateCompanyInfo = (info: CompanyInfo) => {
+    setCompanyInfo(info);
+    setOrder(prev => {
+      const { subtotal, tax, shipping, total, amountDue } = calculateTotals(prev.items, prev.amountPaid, info);
+      return { ...prev, subtotal, tax, shipping, total, amountDue };
+    });
+  };
+
   const updateCustomer = (c: Customer) => setCustomer(c);
   const updateOrder = (o: Order) => setOrder(o);
 
-  const calculateTotals = (items: OrderItem[], amountPaid: number) => {
-    const subtotal = items.reduce((sum, i) => sum + i.total, 0);
-    const total = subtotal;
-    const amountDue = Math.max(0, total - amountPaid);
-    return { subtotal, total, amountDue };
-  };
-
   const updateAmountPaid = (amount: number) => {
       setOrder(prev => {
-        const { subtotal, total, amountDue } = calculateTotals(prev.items, amount);
-        return { ...prev, amountPaid: amount, subtotal, total, amountDue };
+        const { subtotal, tax, shipping, total, amountDue } = calculateTotals(prev.items, amount);
+        return { ...prev, amountPaid: amount, subtotal, tax, shipping, total, amountDue };
       });
   };
 
   const bulkUpdate = (data: { companyInfo?: Partial<CompanyInfo>, customer?: Partial<Customer>, order?: Partial<Order> }) => {
-    if (data.companyInfo) setCompanyInfo(prev => ({ ...prev, ...data.companyInfo }));
+    if (data.companyInfo) {
+      setCompanyInfo(prev => {
+        const nextInfo = { ...prev, ...data.companyInfo };
+        setOrder(prevOrder => {
+          const { subtotal, tax, shipping, total, amountDue } = calculateTotals(prevOrder.items, prevOrder.amountPaid, nextInfo);
+          return { ...prevOrder, subtotal, tax, shipping, total, amountDue };
+        });
+        return nextInfo;
+      });
+    }
     if (data.customer) setCustomer(prev => ({ ...prev, ...data.customer }));
     if (data.order) {
         setOrder(prev => {
             const merged = { ...prev, ...data.order };
-            const { subtotal, total, amountDue } = calculateTotals(merged.items, merged.amountPaid);
-            return { ...merged, subtotal, total, amountDue };
+            const { subtotal, tax, shipping, total, amountDue } = calculateTotals(merged.items, merged.amountPaid);
+            return { ...merged, subtotal, tax, shipping, total, amountDue };
         });
     }
   };
@@ -245,33 +283,33 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            item.total = Number(item.quantity) * Number(item.price);
         }
         newItems[index] = item;
-        const { subtotal, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
-        return { ...prev, items: newItems, subtotal, total, amountDue };
+        const { subtotal, tax, shipping, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
+        return { ...prev, items: newItems, subtotal, tax, shipping, total, amountDue };
     });
   };
 
-  const addOrderItem = (description: string = 'New Item', price: number = 0) => {
+  const addOrderItem = (description: string = 'New Item', price: number = 0, unit: string = 'each', details: string[] = []) => {
     setOrder(prev => {
         const newItem: OrderItem = {
-          id: `item_${Date.now()}`,
+          id: `item_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
           description,
-          details: [],
+          details: details || [],
           quantity: 1,
-          unit: 'each',
-          price,
-          total: price
+          unit: unit || 'each',
+          price: Number(price) || 0,
+          total: Number(price) || 0
         };
         const newItems = [...prev.items, newItem];
-        const { subtotal, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
-        return { ...prev, items: newItems, subtotal, total, amountDue };
+        const { subtotal, tax, shipping, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
+        return { ...prev, items: newItems, subtotal, tax, shipping, total, amountDue };
     });
   };
 
   const removeOrderItem = (index: number) => {
     setOrder(prev => {
         const newItems = prev.items.filter((_, i) => i !== index);
-        const { subtotal, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
-        return { ...prev, items: newItems, subtotal, total, amountDue };
+        const { subtotal, tax, shipping, total, amountDue } = calculateTotals(newItems, prev.amountPaid);
+        return { ...prev, items: newItems, subtotal, tax, shipping, total, amountDue };
     });
   };
 
@@ -301,6 +339,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSavedDocuments(prev => prev.filter(doc => doc.id !== id));
   };
 
+  const currencySymbol = companyInfo.currencySymbol || '£';
+  const currencyCode = companyInfo.currencyCode || 'GBP';
+
+  const formatCurrency = useCallback((amount: number, digits: number = 2) => {
+    return `${currencySymbol}${Number(amount || 0).toLocaleString(undefined, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    })}`;
+  }, [currencySymbol]);
+
   return (
     <DataContext.Provider value={{ 
         profiles, activeProfileId, activeProfile, switchProfile, addProfile, removeProfile, updateProfileName, updateProfile,
@@ -313,7 +361,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         savedDocuments, addSavedDocument, removeSavedDocument,
         bulkUpdate,
         isAutoSaving,
-        isDarkMode, toggleDarkMode
+        isDarkMode, toggleDarkMode,
+        currencySymbol, currencyCode, formatCurrency
     }}>
       {children}
     </DataContext.Provider>

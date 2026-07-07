@@ -18,6 +18,14 @@ export interface Customer {
   avatarUrl: string;
 }
 
+export interface DefaultProduct {
+  id: string;
+  description: string;
+  price: number;
+  unit?: string;
+  details?: string[];
+}
+
 export interface CompanyInfo {
   name: string;
   contact: string;
@@ -38,6 +46,30 @@ export interface CompanyInfo {
   showIban?: boolean;
   showRoutingNo?: boolean;
   vatNo?: string;
+  country?: string;
+  currencyCode?: string;
+  currencySymbol?: string;
+  defaultProducts?: DefaultProduct[];
+  enableVat?: boolean;
+  vatRate?: number;
+  enableDelivery?: boolean;
+  deliveryCost?: number;
+  deliveryLabel?: string;
+  invoicePrefix?: string;
+  orderPrefix?: string;
+  receiptPrefix?: string;
+  customFields?: { label: string; value: string }[];
+  templateDesign?: 'default' | 'usa' | 'uk' | 'canada' | 'modern';
+  documentBgColor?: string;
+  enableSignature?: boolean;
+  signatureText?: string;
+  signatureTitle?: string;
+}
+
+export interface CountryCurrencyOption {
+  country: string;
+  currencyCode: string;
+  currencySymbol: string;
 }
 
 export interface RecentOrder {
@@ -60,6 +92,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   tax: number;
+  shipping?: number;
   total: number;
   amountPaid: number;
   amountDue: number;
@@ -123,5 +156,6 @@ export enum Tab {
   EMAIL = 'EMAIL',
   GALLERY = 'GALLERY',
   PROFILE = 'PROFILE',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  COMPANY_PROFILE = 'COMPANY_PROFILE'
 }

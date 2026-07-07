@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
 import { Tab } from '../types.ts';
-import { Save, ArrowLeft, Lock, Bell, Shield, Smartphone, Mail, Check, Briefcase, Trash2, Edit, Plus, Sun, Moon } from 'lucide-react';
+import { Save, ArrowLeft, Lock, Bell, Shield, Smartphone, Mail, Check, Briefcase, Trash2, Edit, Plus, Sun, Moon, Globe } from 'lucide-react';
 import { useData } from '../contexts/DataContext.tsx';
 import BusinessModal from './BusinessModal.tsx';
 import { CompanyInfo } from '../types.ts';
+import { COUNTRY_CURRENCY_OPTIONS } from '../constants.ts';
 
 interface AccountSettingsProps {
   onNavigate: (tab: Tab) => void;
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({ onNavigate }) => {
-  const { profiles, activeProfileId, switchProfile, addProfile, removeProfile, updateProfile, isDarkMode, toggleDarkMode } = useData();
+  const { profiles, activeProfileId, switchProfile, addProfile, removeProfile, updateProfile, isDarkMode, toggleDarkMode, companyInfo, updateCompanyInfo } = useData();
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
@@ -70,73 +71,23 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Business Management Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-           <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                 <Briefcase className="w-5 h-5" />
-              </div>
-              <div>
-                 <h2 className="font-bold text-gray-900">Business Profiles</h2>
-                 <p className="text-xs text-gray-500">Manage all business identities</p>
-              </div>
-           </div>
-           <button 
-             onClick={() => setIsAddModalOpen(true)}
-             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors"
-           >
-              <Plus className="w-4 h-4" /> Add Business
-           </button>
-        </div>
-        <div className="p-6">
-           <div className="grid gap-3">
-              {profiles.map(p => (
-                 <div key={p.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${p.id === activeProfileId ? 'border-indigo-200 bg-indigo-50/30' : 'border-gray-100 bg-white'}`}>
-                    <div className="flex items-center gap-4 flex-1">
-                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${p.id === activeProfileId ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                          {p.name.charAt(0).toUpperCase()}
-                       </div>
-                       <div className="flex-1">
-                          <p className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                             {p.name}
-                             {p.id === activeProfileId && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">Active</span>}
-                          </p>
-                          <p className="text-xs text-gray-500">Last updated: {new Date(p.lastUpdated).toLocaleDateString()}</p>
-                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                       {p.id !== activeProfileId && (
-                          <button 
-                            onClick={() => switchProfile(p.id)}
-                            className="px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          >
-                             Switch
-                          </button>
-                       )}
-                       <button 
-                          onClick={() => handleStartEdit(p.id)}
-                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                       >
-                          <Edit className="w-4 h-4" />
-                       </button>
-                       <button 
-                          onClick={() => {
-                             if (confirm(`Delete business "${p.name}"? This cannot be undone.`)) {
-                                removeProfile(p.id);
-                             }
-                          }}
-                          disabled={profiles.length <= 1}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
-                       >
-                          <Trash2 className="w-4 h-4" />
-                       </button>
-                    </div>
-                 </div>
-              ))}
-           </div>
-        </div>
+      {/* Business Management Section Link */}
+      <div className="bg-indigo-50/60 dark:bg-slate-800 rounded-xl p-6 border border-indigo-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+         <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-600 text-white rounded-xl shrink-0">
+               <Briefcase className="w-6 h-6" />
+            </div>
+            <div>
+               <h2 className="font-bold text-gray-900 dark:text-white text-base">কোম্পানি প্রোফাইল ও ইনভয়েস ডিজাইন (Company Profile)</h2>
+               <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">কোম্পানি পরিবর্তন, আন্তর্জাতিক ৩-৪টি ইনভয়েস ডিজাইন (USA/UK/Canada), সিগনেচার ও ব্যাকগ্রাউন্ড কালার সেট করুন।</p>
+            </div>
+         </div>
+         <button 
+           onClick={() => onNavigate(Tab.COMPANY_PROFILE)}
+           className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm transition shrink-0"
+         >
+           Company Profile এ যান →
+         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,6 +157,154 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ onNavigate }) => {
                 checked={notifications.securityAlerts}
                 onChange={(v: boolean) => setNotifications({...notifications, securityAlerts: v})}
              />
+          </div>
+        </div>
+      </div>
+
+      {/* Regional Country & Currency */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900 dark:text-white">Regional Country & Currency</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Select country to automatically format financial totals in the matching currency</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-gray-900 dark:text-white text-sm">Active Region & Currency Standard</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Currently set to <span className="font-bold text-gray-900 dark:text-white">{companyInfo.country || 'United Kingdom'}</span> using currency <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{companyInfo.currencyCode || 'GBP'} ({companyInfo.currencySymbol || '£'})</span>.
+            </p>
+          </div>
+          <div className="w-full sm:w-64 shrink-0">
+            <select
+              value={companyInfo.country || 'United Kingdom'}
+              onChange={(e) => {
+                const selectedCountry = e.target.value;
+                const match = COUNTRY_CURRENCY_OPTIONS.find(c => c.country === selectedCountry);
+                updateCompanyInfo({
+                  ...companyInfo,
+                  country: selectedCountry,
+                  currencyCode: match ? match.currencyCode : 'GBP',
+                  currencySymbol: match ? match.currencySymbol : '£'
+                });
+              }}
+              className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+            >
+              {COUNTRY_CURRENCY_OPTIONS.map(opt => (
+                <option key={opt.country} value={opt.country}>
+                  {opt.country} ({opt.currencyCode} - {opt.currencySymbol})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* In-App Universal Option & Document Customizer */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+              <Edit className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900 dark:text-white">In-App Universal Option Customizer</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Add, edit, or customize any document setting or option directly in the app without editing external code</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 space-y-6">
+          {/* Document Numbering Prefixes */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Document Number Prefixes ({companyInfo.name})</h3>
+            <p className="text-xs text-gray-500 mb-3">Customize how document identification numbers start when generated.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">Invoice Prefix</label>
+                <input
+                  type="text"
+                  value={companyInfo.invoicePrefix || 'INV-'}
+                  onChange={(e) => updateCompanyInfo({ ...companyInfo, invoicePrefix: e.target.value })}
+                  className="w-full mt-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">Order Confirmation Prefix</label>
+                <input
+                  type="text"
+                  value={companyInfo.orderPrefix || 'ORD-'}
+                  onChange={(e) => updateCompanyInfo({ ...companyInfo, orderPrefix: e.target.value })}
+                  className="w-full mt-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">Receipt Prefix</label>
+                <input
+                  type="text"
+                  value={companyInfo.receiptPrefix || 'REC-'}
+                  onChange={(e) => updateCompanyInfo({ ...companyInfo, receiptPrefix: e.target.value })}
+                  className="w-full mt-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick VAT & Delivery Global Options */}
+          <div className="pt-4 border-t border-gray-100 dark:border-slate-800">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Default VAT & Delivery Options</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(companyInfo.enableVat)}
+                    onChange={(e) => updateCompanyInfo({ ...companyInfo, enableVat: e.target.checked })}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">Enable VAT by Default</span>
+                </label>
+                {companyInfo.enableVat && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-600 dark:text-gray-400">Default Rate (%):</span>
+                    <input
+                      type="number"
+                      value={companyInfo.vatRate !== undefined ? companyInfo.vatRate : 20}
+                      onChange={(e) => updateCompanyInfo({ ...companyInfo, vatRate: parseFloat(e.target.value) || 0 })}
+                      className="w-20 bg-white dark:bg-slate-900 border rounded px-2 py-1 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(companyInfo.enableDelivery)}
+                    onChange={(e) => updateCompanyInfo({ ...companyInfo, enableDelivery: e.target.checked })}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">Enable Delivery Fee by Default</span>
+                </label>
+                {companyInfo.enableDelivery && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-600 dark:text-gray-400">Default Fee:</span>
+                    <input
+                      type="number"
+                      value={companyInfo.deliveryCost !== undefined ? companyInfo.deliveryCost : 25}
+                      onChange={(e) => updateCompanyInfo({ ...companyInfo, deliveryCost: parseFloat(e.target.value) || 0 })}
+                      className="w-20 bg-white dark:bg-slate-900 border rounded px-2 py-1 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

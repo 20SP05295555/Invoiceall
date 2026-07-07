@@ -3,7 +3,9 @@ import React, { useRef, useState } from 'react';
 import DocumentLayout from './DocumentLayout.tsx';
 import { FileText, Printer, Download, Loader2, Edit2, Save, CheckCircle, AlertCircle, X, Image as ImageIcon } from 'lucide-react';
 import { useData } from '../contexts/DataContext.tsx';
-import { exportDocumentAsOnePagePDF, exportDocumentAsJPEG } from '../utils/exportUtils.ts';
+import { exportDocumentAsOnePagePDF, exportDocumentAsJPEG, checkNeedsTwoPages } from '../utils/exportUtils.ts';
+import { extractDocReference } from '../constants.ts';
+import { ExportPageFitModal } from './ExportPageFitModal.tsx';
 
 const Invoice: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -11,19 +13,39 @@ const Invoice: React.FC = () => {
   const [isDownloadingJpeg, setIsDownloadingJpeg] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showMarkAsPaidModal, setShowMarkAsPaidModal] = useState(false);
-  const { order, updateOrder, customer, updateCustomer, bulkUpdate } = useData();
+  const [showFitModal, setShowFitModal] = useState(false);
+  const { order, updateOrder, customer, updateCustomer, bulkUpdate, currencySymbol } = useData();
 
   const handlePrint = () => {
     window.print();
   };
 
+  const getTargetFilename = () => `${customer.name || 'Customer'} Invoice ${order.orderNumber}`;
+
   const handleDownload = async () => {
+    if (!contentRef.current) return;
+    const needs2 = await checkNeedsTwoPages(contentRef.current);
+    if (needs2 || order.items.length > 3) {
+      setShowFitModal(true);
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await exportDocumentAsOnePagePDF(contentRef.current, `${getTargetFilename()}.pdf`, 1);
+    } catch (err) {
+      console.error("PDF generation failed", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleConfirmExport = async (pages: number) => {
     if (!contentRef.current) return;
     setIsDownloading(true);
     try {
-      await exportDocumentAsOnePagePDF(contentRef.current, `Invoice_${order.orderNumber}.pdf`);
+      await exportDocumentAsOnePagePDF(contentRef.current, `${getTargetFilename()}.pdf`, pages);
     } catch (err) {
-      console.error("PDF generation failed", err);
+      console.error("PDF export failed", err);
     } finally {
       setIsDownloading(false);
     }
@@ -33,7 +55,7 @@ const Invoice: React.FC = () => {
     if (!contentRef.current) return;
     setIsDownloadingJpeg(true);
     try {
-      await exportDocumentAsJPEG(contentRef.current, `Invoice_${order.orderNumber}.jpg`);
+      await exportDocumentAsJPEG(contentRef.current, `${getTargetFilename()}.jpg`);
     } catch (err) {
       console.error("JPEG generation failed", err);
     } finally {
@@ -134,7 +156,7 @@ const Invoice: React.FC = () => {
             title={docTitle}
             onTitleChange={setDocTitle}
             documentNumber={`${order.orderNumber}`}
-            onDocumentNumberChange={(v) => updateOrder({...order, orderNumber: v})}
+            onDocumentNumberChange={(v) => updateOrder({...order, orderNumber: v, paymentReference: extractDocReference(v)})}
             dateLabel={dateLabel}
             onDateLabelChange={setDateLabel}
             dateValue={order.date}
@@ -172,7 +194,7 @@ const Invoice: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Mark as Paid</h3>
               <p className="text-gray-600 leading-relaxed">
-                Are you sure you want to mark this invoice as paid? This will update the total amount paid to <span className="font-bold text-gray-900">£{order.total.toFixed(2)}</span> and set the status to Delivered.
+                Are you sure you want to mark this invoice as paid? This will update the total amount paid to <span className="font-bold text-gray-900">{currencySymbol}{order.total.toFixed(2)}</span> and set the status to Delivered.
               </p>
             </div>
             <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row gap-3">
@@ -192,6 +214,12 @@ const Invoice: React.FC = () => {
           </div>
         </div>
       )}
+      <ExportPageFitModal
+        isOpen={showFitModal}
+        onClose={() => setShowFitModal(false)}
+        onConfirmExport={handleConfirmExport}
+        documentTitle={getTargetFilename()}
+      />
     </div>
   );
 };
