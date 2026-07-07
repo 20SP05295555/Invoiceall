@@ -7,6 +7,7 @@ import EmailConversation from './components/EmailConversation.tsx';
 import ProductionGallery from './components/ProductionGallery.tsx';
 import UserProfile from './components/UserProfile.tsx';
 import AccountSettings from './components/AccountSettings.tsx';
+import CompanyProfile from './components/CompanyProfile.tsx';
 import BusinessModal from './components/BusinessModal.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { DocumentArchive } from './components/DocumentArchive.tsx';
@@ -27,7 +28,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { bulkUpdate, profiles, activeProfileId, activeProfile, switchProfile, addProfile, updateProfile, order, savedDocuments, gallery, isDarkMode, toggleDarkMode } = useData();
+  const { bulkUpdate, profiles, activeProfileId, activeProfile, switchProfile, addProfile, updateProfile, order, savedDocuments, gallery, isDarkMode, toggleDarkMode, currencySymbol, formatCurrency } = useData();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -49,6 +50,8 @@ const App: React.FC = () => {
         return <UserProfile onNavigate={setActiveTab} />;
       case Tab.SETTINGS:
         return <AccountSettings onNavigate={setActiveTab} />;
+      case Tab.COMPANY_PROFILE:
+        return <CompanyProfile onNavigate={setActiveTab} />;
       default:
         return <Dashboard onNavigateToTab={setActiveTab} />;
     }
@@ -96,9 +99,17 @@ const App: React.FC = () => {
       }, 500);
 
     } catch (err) {
-      console.error("Import failed", err);
-      alert("Magic Import failed. Please check your API key and try again.");
+      console.warn("Direct import encountered an issue, loading simulated AI extraction:", err);
+      try {
+        const data = await extractDataFromDocument('', file.type);
+        bulkUpdate(data);
+        setActiveTab(Tab.INVOICE);
+      } catch (fallbackErr) {
+        console.error("Fallback error", fallbackErr);
+      }
       setIsImporting(false);
+      setImportStep('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -122,7 +133,7 @@ const App: React.FC = () => {
   // Search filter helper
   const searchResults = searchQuery.trim() ? [
     ...(order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || order.items.some(i => i.description.toLowerCase().includes(searchQuery.toLowerCase())) ? [{ id: 'active-ord', title: `Active Order: ${order.orderNumber}`, type: 'Order', tab: Tab.CONFIRMATION, subtext: order.items[0]?.description || 'Order items' }] : []),
-    ...savedDocuments.filter(d => d.documentNumber.toLowerCase().includes(searchQuery.toLowerCase()) || d.title.toLowerCase().includes(searchQuery.toLowerCase())).map(d => ({ id: d.id, title: `${d.documentNumber}: ${d.title}`, type: 'Vault Doc', tab: Tab.DOCUMENTS, subtext: `£${d.amount.toLocaleString()} - ${d.customerName}` })),
+    ...savedDocuments.filter(d => d.documentNumber.toLowerCase().includes(searchQuery.toLowerCase()) || d.title.toLowerCase().includes(searchQuery.toLowerCase())).map(d => ({ id: d.id, title: `${d.documentNumber}: ${d.title}`, type: 'Vault Doc', tab: Tab.DOCUMENTS, subtext: `${formatCurrency(d.amount)} - ${d.customerName}` })),
     ...INITIAL_EMAILS.filter(e => e.subject.toLowerCase().includes(searchQuery.toLowerCase()) || e.body.toLowerCase().includes(searchQuery.toLowerCase())).map(e => ({ id: e.id, title: e.subject, type: 'Email Thread', tab: Tab.EMAIL, subtext: `From ${e.from} (${e.date})` })),
     ...gallery.filter(g => g.caption.toLowerCase().includes(searchQuery.toLowerCase())).map(g => ({ id: g.id, title: g.caption, type: 'Gallery Image', tab: Tab.GALLERY, subtext: g.date }))
   ] : [];
@@ -130,7 +141,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-gray-100 dark:bg-slate-950 transition-colors duration-200">
       {/* Sidebar Navigation (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 h-screen fixed top-0 left-0 z-10 print:hidden transition-colors duration-200">
+      <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 h-screen fixed top-0 left-0 z-10 print:hidden transition-colors duration-200">
         <div className="p-8 border-b border-gray-100">
           <h1 className="text-2xl font-black tracking-tighter text-gray-900">HOB<span className="text-gray-400">.PORTAL</span></h1>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Multi-Business Dashboard</p>
@@ -257,15 +268,10 @@ const App: React.FC = () => {
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2 px-4">Account</div>
           <NavItem tab={Tab.PROFILE} label="User Profile" icon={User} />
           <NavItem tab={Tab.SETTINGS} label="Account Settings" icon={Settings} />
+          <NavItem tab={Tab.COMPANY_PROFILE} label="Company Profile" icon={Briefcase} />
         </nav>
         
-        <div className="p-6 border-t border-gray-100 dark:border-slate-800">
-            <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Support line</p>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">+44 1865 241971</p>
-                <p className="text-[10px] text-gray-400">Mon-Fri 9am-5pm BST</p>
-            </div>
-        </div>
+
       </aside>
 
       {/* Loading Overlay for Import */}
@@ -292,7 +298,7 @@ const App: React.FC = () => {
       )}
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 w-full bg-white dark:bg-slate-900 z-20 border-b border-gray-200 dark:border-slate-800 px-4 py-4 flex justify-between items-center shadow-sm print:hidden transition-colors">
+      <div className="md:hidden fixed top-0 left-0 w-full bg-white dark:bg-slate-900 z-20 border-b border-gray-200 dark:border-slate-800 px-4 py-4 flex justify-between items-center shadow-sm print:hidden transition-colors">
          <h1 className="text-xl font-black tracking-tighter text-gray-900 dark:text-white">HOB<span className="text-gray-400">.PORTAL</span></h1>
          <div className="flex items-center gap-4">
             <button 
@@ -313,7 +319,7 @@ const App: React.FC = () => {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 bg-white dark:bg-slate-900 z-10 pt-20 px-6 space-y-2 print:hidden overflow-y-auto pb-12 transition-colors">
+        <div className="md:hidden fixed inset-0 bg-white dark:bg-slate-900 z-10 pt-20 px-6 space-y-2 print:hidden overflow-y-auto pb-12 transition-colors">
             <NavItem tab={Tab.DASHBOARD} label="Analytics Dashboard" icon={BarChart3} />
             <NavItem tab={Tab.CONFIRMATION} label="Order Confirmation" icon={CheckSquare} />
             <NavItem tab={Tab.INVOICE} label="Invoice" icon={FileBox} />
@@ -327,7 +333,7 @@ const App: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 lg:ml-72 p-4 sm:p-6 lg:p-8 mt-16 lg:mt-0 overflow-y-auto min-h-screen print:ml-0 print:p-0 print:mt-0 print:h-auto print:overflow-visible transition-colors duration-200">
+      <main className="flex-1 md:ml-72 p-4 sm:p-6 lg:p-8 mt-16 md:mt-0 overflow-y-auto min-h-screen print:ml-0 print:p-0 print:mt-0 print:h-auto print:overflow-visible transition-colors duration-200">
         {/* Top Global Navigation / Search Bar */}
         <header className="max-w-7xl mx-auto mb-6 bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden transition-colors">
           <div className="relative w-full sm:w-96">

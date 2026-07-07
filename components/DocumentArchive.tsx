@@ -8,7 +8,7 @@ interface DocumentArchiveProps {
 }
 
 export const DocumentArchive: React.FC<DocumentArchiveProps> = ({ onNavigateToTab }) => {
-  const { savedDocuments, removeSavedDocument, addSavedDocument, order, customer, companyInfo } = useData();
+  const { savedDocuments, removeSavedDocument, addSavedDocument, order, customer, companyInfo, formatCurrency } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedDoc, setSelectedDoc] = useState<SavedDocument | null>(null);
@@ -71,10 +71,10 @@ export const DocumentArchive: React.FC<DocumentArchiveProps> = ({ onNavigateToTa
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <FolderOpen className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            Document Archive Vault
+            Lifetime Document Vault — <span className="text-indigo-600 dark:text-indigo-400">{companyInfo.name}</span>
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Search, retrieve, and manage all your saved order confirmations, invoices, and payment receipts by document number.
+            Documents saved for <strong className="text-gray-700 dark:text-gray-300">{companyInfo.name}</strong> are stored automatically for life. Retrieve, review, or delete them anytime.
           </p>
         </div>
         <button
@@ -175,7 +175,7 @@ export const DocumentArchive: React.FC<DocumentArchiveProps> = ({ onNavigateToTa
                       {doc.createdDate}
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
-                      £{doc.amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                      {formatCurrency(doc.amount)}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
@@ -236,7 +236,7 @@ export const DocumentArchive: React.FC<DocumentArchiveProps> = ({ onNavigateToTa
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">Total Amount</span>
-                <p className="font-semibold text-gray-800 dark:text-gray-200 mt-0.5">£{selectedDoc.amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</p>
+                <p className="font-semibold text-gray-800 dark:text-gray-200 mt-0.5">{formatCurrency(selectedDoc.amount)}</p>
               </div>
             </div>
 

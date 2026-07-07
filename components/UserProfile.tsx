@@ -5,21 +5,50 @@ import { Tab } from '../types.ts';
 import { 
   Package, MapPin, CreditCard, Bell, Settings, LogOut, 
   ChevronRight, Edit2, Save, Phone, Mail, Camera, 
-  Loader2, Trash2, Image as ImageIcon, CheckCircle, X, User, Plus 
+  Loader2, Trash2, Image as ImageIcon, CheckCircle, X, User, Plus, Globe 
 } from 'lucide-react';
+import { COUNTRY_CURRENCY_OPTIONS } from '../constants.ts';
 
 interface UserProfileProps {
   onNavigate: (tab: Tab) => void;
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
-  const { customer, updateCustomer, order, addGalleryItem, recentOrders, removeRecentOrder, companyInfo, updateCompanyInfo } = useData();
+  const { customer, updateCustomer, order, addGalleryItem, recentOrders, removeRecentOrder, companyInfo, updateCompanyInfo, currencySymbol } = useData();
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingBusiness, setIsEditingBusiness] = useState(false);
   const [editData, setEditData] = useState(customer);
   const [editBusinessData, setEditBusinessData] = useState(companyInfo);
   const [isCapturing, setIsCapturing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [newDefaultDesc, setNewDefaultDesc] = useState('');
+  const [newDefaultPrice, setNewDefaultPrice] = useState('');
+  const [newDefaultUnit, setNewDefaultUnit] = useState('each');
+
+  const handleAddDefaultProductProfile = () => {
+    if (!newDefaultDesc.trim()) return;
+    const prod = {
+      id: `dp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      description: newDefaultDesc.trim(),
+      price: parseFloat(newDefaultPrice) || 0,
+      unit: newDefaultUnit.trim() || 'each'
+    };
+    setEditBusinessData(prev => ({
+      ...prev,
+      defaultProducts: [...(prev.defaultProducts || []), prod]
+    }));
+    setNewDefaultDesc('');
+    setNewDefaultPrice('');
+    setNewDefaultUnit('each');
+  };
+
+  const handleRemoveDefaultProductProfile = (id: string) => {
+    setEditBusinessData(prev => ({
+      ...prev,
+      defaultProducts: (prev.defaultProducts || []).filter(p => p.id !== id)
+    }));
+  };
 
   const startEditing = () => {
     setEditData({ ...customer });
@@ -226,7 +255,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                 <CreditCard className="w-5 h-5" />
                 <h3 className="font-semibold text-gray-900 text-sm">Total Spent</h3>
             </div>
-            <p className="text-2xl font-bold text-gray-900">£{order.total.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-900">{currencySymbol}{order.total.toFixed(2)}</p>
          </div>
          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center gap-3 mb-3 text-purple-600">
@@ -355,6 +384,42 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                           <p className="text-gray-900 font-medium pl-6">{companyInfo.vatNo || 'N/A'}</p>
                       )}
                   </div>
+                </div>
+                <div>
+                    <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <Globe className="w-3.5 h-3.5 text-indigo-400" /> Country & Operating Currency
+                    </div>
+                    <div className="pl-6">
+                        {isEditingBusiness ? (
+                          <select 
+                            value={editBusinessData.country || 'United Kingdom'} 
+                            onChange={(e) => {
+                              const selectedCountry = e.target.value;
+                              const match = COUNTRY_CURRENCY_OPTIONS.find(c => c.country === selectedCountry);
+                              setEditBusinessData({
+                                ...editBusinessData,
+                                country: selectedCountry,
+                                currencyCode: match ? match.currencyCode : 'GBP',
+                                currencySymbol: match ? match.currencySymbol : '£'
+                              });
+                            }}
+                            className="w-full max-w-md bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                          >
+                            {COUNTRY_CURRENCY_OPTIONS.map(opt => (
+                              <option key={opt.country} value={opt.country}>
+                                {opt.country} — {opt.currencyCode} ({opt.currencySymbol})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="text-gray-900 font-bold flex items-center gap-2">
+                            <span>{companyInfo.country || 'United Kingdom'}</span>
+                            <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono font-bold">
+                              {companyInfo.currencyCode || 'GBP'} ({companyInfo.currencySymbol || '£'})
+                            </span>
+                          </p>
+                        )}
+                    </div>
                 </div>
                 <div>
                     <div className="flex items-center gap-2 mb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -506,6 +571,185 @@ const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Default Products & Price List Section */}
+                <div className="pt-6 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <Package className="w-3.5 h-3.5 text-indigo-400" /> Default Products & Price List
+                        </div>
+                    </div>
+                    <div className="pl-6 space-y-3">
+                        {isEditingBusiness ? (
+                            <div className="space-y-3">
+                                {(editBusinessData.defaultProducts && editBusinessData.defaultProducts.length > 0) ? (
+                                    <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+                                        {editBusinessData.defaultProducts.map((prod) => (
+                                            <div key={prod.id} className="flex items-center justify-between p-3 bg-gray-50/50">
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-900">{prod.description}</p>
+                                                    <p className="text-[11px] text-gray-500 font-mono">
+                                                        {companyInfo.currencySymbol || '£'}{prod.price.toFixed(2)} / {prod.unit || 'each'}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveDefaultProductProfile(prod.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-gray-400 italic">No default products saved.</p>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+                                    <div className="sm:col-span-6">
+                                        <input
+                                            type="text"
+                                            placeholder="Product Description"
+                                            value={newDefaultDesc}
+                                            onChange={(e) => setNewDefaultDesc(e.target.value)}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Unit"
+                                            value={newDefaultUnit}
+                                            onChange={(e) => setNewDefaultUnit(e.target.value)}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <input
+                                            type="number"
+                                            placeholder="Price"
+                                            value={newDefaultPrice}
+                                            onChange={(e) => setNewDefaultPrice(e.target.value)}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleAddDefaultProductProfile}
+                                            className="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" /> Add
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                {(companyInfo.defaultProducts && companyInfo.defaultProducts.length > 0) ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {companyInfo.defaultProducts.map((prod) => (
+                                            <div key={prod.id} className="p-2.5 bg-gray-50 border border-gray-200/60 rounded-xl flex items-center justify-between">
+                                                <span className="text-xs font-medium text-gray-800 truncate pr-2">{prod.description}</span>
+                                                <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-gray-100 text-gray-900 shrink-0">
+                                                    {companyInfo.currencySymbol || '£'}{prod.price.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-gray-400 italic">No default products configured for this profile.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* VAT & Delivery Settings Section */}
+                <div className="pt-6 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <CreditCard className="w-3.5 h-3.5 text-indigo-400" /> VAT & Delivery Settings
+                        </div>
+                    </div>
+                    <div className="pl-6 space-y-3">
+                        {isEditingBusiness ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-xl border border-gray-200">
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(editBusinessData.enableVat)}
+                                            onChange={(e) => setEditBusinessData({ ...editBusinessData, enableVat: e.target.checked })}
+                                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <span className="text-xs font-bold text-gray-800">Charge VAT</span>
+                                    </label>
+                                    {editBusinessData.enableVat && (
+                                        <div className="flex items-center gap-2 pl-6">
+                                            <span className="text-xs text-gray-600">Rate (%):</span>
+                                            <input
+                                                type="number"
+                                                value={editBusinessData.vatRate !== undefined ? editBusinessData.vatRate : 20}
+                                                onChange={(e) => setEditBusinessData({ ...editBusinessData, vatRate: parseFloat(e.target.value) || 0 })}
+                                                className="w-20 bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(editBusinessData.enableDelivery)}
+                                            onChange={(e) => setEditBusinessData({ ...editBusinessData, enableDelivery: e.target.checked })}
+                                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <span className="text-xs font-bold text-gray-800">Charge Delivery Fee</span>
+                                    </label>
+                                    {editBusinessData.enableDelivery && (
+                                        <div className="space-y-2 pl-6">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-600">Cost:</span>
+                                                <input
+                                                    type="number"
+                                                    value={editBusinessData.deliveryCost !== undefined ? editBusinessData.deliveryCost : 25}
+                                                    onChange={(e) => setEditBusinessData({ ...editBusinessData, deliveryCost: parseFloat(e.target.value) || 0 })}
+                                                    className="w-24 bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Delivery Label"
+                                                    value={editBusinessData.deliveryLabel || ''}
+                                                    onChange={(e) => setEditBusinessData({ ...editBusinessData, deliveryLabel: e.target.value })}
+                                                    className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="p-3 bg-gray-50 border border-gray-200/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-xs font-medium text-gray-700">VAT Status</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${companyInfo.enableVat ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-200 text-gray-600'}`}>
+                                        {companyInfo.enableVat ? `Charged (${companyInfo.vatRate ?? 20}%)` : 'Not Charged'}
+                                    </span>
+                                </div>
+                                <div className="p-3 bg-gray-50 border border-gray-200/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-xs font-medium text-gray-700">{companyInfo.deliveryLabel || 'Delivery Fee'}</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${companyInfo.enableDelivery ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}>
+                                        {companyInfo.enableDelivery ? `${companyInfo.currencySymbol || '£'}${(companyInfo.deliveryCost ?? 25).toFixed(2)}` : 'Not Charged'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

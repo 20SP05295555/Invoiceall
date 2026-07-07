@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Save, Building, Mail, Phone, Globe, MapPin, CreditCard, Upload, Trash2 } from 'lucide-react';
+import { X, Save, Building, Mail, Phone, Globe, MapPin, CreditCard, Upload, Trash2, Package, Plus } from 'lucide-react';
 import { CompanyInfo } from '../types.ts';
-import { COMPANY_INFO } from '../constants.ts';
+import { COMPANY_INFO, COUNTRY_CURRENCY_OPTIONS } from '../constants.ts';
 
 interface BusinessModalProps {
   isOpen: boolean;
@@ -15,6 +15,34 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
   const [name, setName] = useState(initialData?.name || '');
   const [info, setInfo] = useState<CompanyInfo>(initialData?.info || { ...COMPANY_INFO });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [newProdDesc, setNewProdDesc] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState('');
+  const [newProdUnit, setNewProdUnit] = useState('each');
+
+  const handleAddDefaultProduct = () => {
+    if (!newProdDesc.trim()) return;
+    const prod = {
+      id: `dp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      description: newProdDesc.trim(),
+      price: parseFloat(newProdPrice) || 0,
+      unit: newProdUnit.trim() || 'each'
+    };
+    setInfo(prev => ({
+      ...prev,
+      defaultProducts: [...(prev.defaultProducts || []), prod]
+    }));
+    setNewProdDesc('');
+    setNewProdPrice('');
+    setNewProdUnit('each');
+  };
+
+  const handleRemoveDefaultProduct = (id: string) => {
+    setInfo(prev => ({
+      ...prev,
+      defaultProducts: (prev.defaultProducts || []).filter(p => p.id !== id)
+    }));
+  };
 
   // Sync state when modal opens or initialData changes
   useEffect(() => {
@@ -170,6 +198,32 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="Full Name"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Country & Operating Currency</span>
+                  <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">{info.currencyCode || 'GBP'} ({info.currencySymbol || '£'})</span>
+                </label>
+                <select 
+                  value={info.country || 'United Kingdom'} 
+                  onChange={(e) => {
+                    const selectedCountry = e.target.value;
+                    const match = COUNTRY_CURRENCY_OPTIONS.find(c => c.country === selectedCountry);
+                    setInfo(prev => ({
+                      ...prev,
+                      country: selectedCountry,
+                      currencyCode: match ? match.currencyCode : 'GBP',
+                      currencySymbol: match ? match.currencySymbol : '£'
+                    }));
+                  }}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  {COUNTRY_CURRENCY_OPTIONS.map(opt => (
+                    <option key={opt.country} value={opt.country}>
+                      {opt.country} — {opt.currencyCode} ({opt.currencySymbol})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>
@@ -327,6 +381,152 @@ const BusinessModal: React.FC<BusinessModalProps> = ({ isOpen, onClose, onSave, 
                   onChange={(e) => updateField('iban', e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
+              </div>
+            </div>
+          </section>
+
+          {/* Default Products / Services Catalog */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Package className="w-4 h-4 text-indigo-500" /> Default Products & Price List
+            </h3>
+            <p className="text-xs text-gray-500">
+              Save default products and prices so they can be selected quickly when creating invoices for this company.
+            </p>
+            <div className="space-y-2">
+              {info.defaultProducts && info.defaultProducts.length > 0 ? (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+                  {info.defaultProducts.map((prod) => (
+                    <div key={prod.id} className="flex items-center justify-between p-3 bg-gray-50/50 hover:bg-gray-50 transition">
+                      <div>
+                        <p className="text-xs font-bold text-gray-900">{prod.description}</p>
+                        <p className="text-[11px] text-gray-500 font-mono">
+                          {info.currencySymbol || '£'}{prod.price.toFixed(2)} / {prod.unit || 'each'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDefaultProduct(prod.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                        title="Remove default product"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No default products saved yet.</p>
+              )}
+
+              {/* Add New Default Product Form */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2">
+                <div className="sm:col-span-6">
+                  <input
+                    type="text"
+                    placeholder="Product / Service Description"
+                    value={newProdDesc}
+                    onChange={(e) => setNewProdDesc(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <input
+                    type="text"
+                    placeholder="Unit (pcs)"
+                    value={newProdUnit}
+                    onChange={(e) => setNewProdUnit(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <input
+                    type="number"
+                    placeholder="Price"
+                    value={newProdPrice}
+                    onChange={(e) => setNewProdPrice(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleAddDefaultProduct}
+                    className="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* VAT & Delivery Options */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-indigo-500" /> Tax (VAT) & Delivery Cost Configuration
+            </h3>
+            <p className="text-xs text-gray-500">
+              Configure whether VAT or Delivery costs should be charged when generating documents for this company.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-xl border border-gray-200">
+              {/* VAT Option */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(info.enableVat)}
+                    onChange={(e) => updateField('enableVat', e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  />
+                  <span className="text-xs font-bold text-gray-800">Charge VAT on Documents</span>
+                </label>
+                {info.enableVat && (
+                  <div className="flex items-center gap-2 pl-6">
+                    <span className="text-xs text-gray-600">VAT Rate (%):</span>
+                    <input
+                      type="number"
+                      value={info.vatRate !== undefined ? info.vatRate : 20}
+                      onChange={(e) => updateField('vatRate', parseFloat(e.target.value) || 0)}
+                      className="w-20 bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Option */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(info.enableDelivery)}
+                    onChange={(e) => updateField('enableDelivery', e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  />
+                  <span className="text-xs font-bold text-gray-800">Charge Delivery / Shipping Fee</span>
+                </label>
+                {info.enableDelivery && (
+                  <div className="space-y-2 pl-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600">Cost ({info.currencySymbol || '£'}):</span>
+                      <input
+                        type="number"
+                        value={info.deliveryCost !== undefined ? info.deliveryCost : 25}
+                        onChange={(e) => updateField('deliveryCost', parseFloat(e.target.value) || 0)}
+                        className="w-24 bg-white border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Label (e.g. Standard Delivery)"
+                        value={info.deliveryLabel || ''}
+                        onChange={(e) => updateField('deliveryLabel', e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </section>

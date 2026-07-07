@@ -15,7 +15,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
-  const { order, recentOrders, savedDocuments, customer, companyInfo } = useData();
+  const { order, recentOrders, savedDocuments, customer, companyInfo, currencySymbol, currencyCode, formatCurrency } = useData();
 
   // Financial metrics
   const totalRevenue = order.total + recentOrders.length * 1250;
@@ -94,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
             </div>
           </div>
           <div className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
-            £{totalRevenue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalRevenue)}
           </div>
           <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" /> +14.2% vs previous quarter
@@ -111,7 +111,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
             </div>
           </div>
           <div className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
-            £{totalPaid.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalPaid)}
           </div>
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Across {recentOrders.length + 1} active orders
@@ -128,7 +128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
             </div>
           </div>
           <div className={`mt-4 text-2xl font-bold ${outstandingDue > 0 ? 'text-amber-600 dark:text-amber-400 font-mono' : 'text-gray-900 dark:text-white'}`}>
-            £{outstandingDue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+            {formatCurrency(outstandingDue)}
           </div>
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {outstandingDue > 0 ? `Due by ${order.dueDate}` : 'Fully settled'}
@@ -163,7 +163,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Monthly Spending & Order Value (£)
+                Monthly Spending & Order Value ({currencySymbol})
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Expenditure trends over the past 6 months
@@ -178,9 +178,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
               <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} tickFormatter={(val) => `£${val}`} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} tickFormatter={(val) => `${currencySymbol}${val}`} />
                 <Tooltip 
-                  formatter={(val: any) => [`£${Number(val).toLocaleString()}`, 'Spending']}
+                  formatter={(val: any) => [`${formatCurrency(Number(val))}`, 'Spending']}
                   contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', borderRadius: '0.75rem' }}
                 />
                 <Bar dataKey="spending" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={36} />
@@ -267,10 +267,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
             </div>
             <div className="text-right">
               <p className="text-sm font-bold text-gray-900 dark:text-white">
-                £{order.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                {formatCurrency(order.total)}
               </p>
               <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                Paid: £{order.amountPaid.toLocaleString()}
+                Paid: {formatCurrency(order.amountPaid, 0)}
               </span>
             </div>
           </div>
@@ -292,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToTab }) => {
               </div>
               <div className="text-right">
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
-                  £1,250.00
+                  {formatCurrency(1250)}
                 </p>
                 <span className="text-[11px] font-medium text-gray-400">
                   Completed

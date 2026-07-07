@@ -3,26 +3,48 @@ import React, { useRef, useState } from 'react';
 import DocumentLayout from './DocumentLayout.tsx';
 import { CheckCircle, Printer, Download, Loader2, Edit2, Save, Image as ImageIcon } from 'lucide-react';
 import { useData } from '../contexts/DataContext.tsx';
-import { exportDocumentAsOnePagePDF, exportDocumentAsJPEG } from '../utils/exportUtils.ts';
+import { exportDocumentAsOnePagePDF, exportDocumentAsJPEG, checkNeedsTwoPages } from '../utils/exportUtils.ts';
+import { extractDocReference } from '../constants.ts';
+import { ExportPageFitModal } from './ExportPageFitModal.tsx';
 
 const OrderConfirmation: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingJpeg, setIsDownloadingJpeg] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showFitModal, setShowFitModal] = useState(false);
   const { order, updateOrder, customer, updateCustomer } = useData();
 
   const handlePrint = () => {
     window.print();
   };
 
+  const getTargetFilename = () => `${customer.name || 'Customer'} Order Confirmation ${order.orderNumber}`;
+
   const handleDownload = async () => {
+    if (!contentRef.current) return;
+    const needs2 = await checkNeedsTwoPages(contentRef.current);
+    if (needs2 || order.items.length > 3) {
+      setShowFitModal(true);
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await exportDocumentAsOnePagePDF(contentRef.current, `${getTargetFilename()}.pdf`, 1);
+    } catch (err) {
+      console.error("PDF generation failed", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleConfirmExport = async (pages: number) => {
     if (!contentRef.current) return;
     setIsDownloading(true);
     try {
-      await exportDocumentAsOnePagePDF(contentRef.current, `Order_${order.orderNumber}.pdf`);
+      await exportDocumentAsOnePagePDF(contentRef.current, `${getTargetFilename()}.pdf`, pages);
     } catch (err) {
-      console.error("PDF generation failed", err);
+      console.error("PDF export failed", err);
     } finally {
       setIsDownloading(false);
     }
@@ -32,7 +54,7 @@ const OrderConfirmation: React.FC = () => {
     if (!contentRef.current) return;
     setIsDownloadingJpeg(true);
     try {
-      await exportDocumentAsJPEG(contentRef.current, `Order_${order.orderNumber}.jpg`);
+      await exportDocumentAsJPEG(contentRef.current, `${getTargetFilename()}.jpg`);
     } catch (err) {
       console.error("JPEG generation failed", err);
     } finally {
@@ -94,7 +116,7 @@ const OrderConfirmation: React.FC = () => {
         <DocumentLayout 
             title="Order Confirmation" 
             documentNumber={order.orderNumber}
-            onDocumentNumberChange={(v) => updateOrder({...order, orderNumber: v})}
+            onDocumentNumberChange={(v) => updateOrder({...order, orderNumber: v, paymentReference: extractDocReference(v)})}
             dateLabel="Order Date"
             dateValue={order.date}
             onDateChange={(v) => updateOrder({...order, date: v})}
@@ -111,6 +133,12 @@ const OrderConfirmation: React.FC = () => {
             </div>
         </DocumentLayout>
       </div>
+      <ExportPageFitModal
+        isOpen={showFitModal}
+        onClose={() => setShowFitModal(false)}
+        onConfirmExport={handleConfirmExport}
+        documentTitle={getTargetFilename()}
+      />
     </div>
   );
 };
